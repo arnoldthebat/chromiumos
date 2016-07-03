@@ -1,0 +1,3 @@
+USE="clang"
+CC=x86_64-cros-linux-gnu-clang
+CXX=x86_64-cros-linux-gnu-clang++
