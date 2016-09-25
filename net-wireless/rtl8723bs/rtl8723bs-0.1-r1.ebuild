@@ -25,9 +25,12 @@ RDEPEND=""
 
 MODULE_NAMES="r8723bs(net/wireless)"
 
+
+
 pkg_setup() {
 	linux-mod_pkg_setup
 	BUILD_TARGETS=modules
+	export KSRC="/build/${BOARD}/usr/src/linux"
 }
 
 src_compile() {
