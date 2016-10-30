@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=5
-inherit eutils linux-info linux-mod
+inherit eutils linux-info linux-mod 
 
 DESCRIPTION="rtl8723bs SDIO driver"
 CROS_WORKON_REPO="https://github.com/arnoldthebat"
@@ -25,23 +25,30 @@ RDEPEND=""
 
 MODULE_NAMES="r8723bs(net/wireless)"
 
-
-
 pkg_setup() {
 	linux-mod_pkg_setup
 	BUILD_TARGETS=modules
 	export KSRC="/build/${BOARD}/usr/src/linux"
 }
 
-src_compile() {
-	linux-mod_src_compile
-}
+#src_compile() {
+#	linux-mod_src_compile
+#}
 
-pkg_preinst() {
+src_install() {
+	linux-mod_src_compile
 	ewarn "**** Adding Files to Firmware *****"
 	insinto /lib/firmware/rtlwifi/
 	doins ${WORKDIR}/rtl8723bs/rtl8723bs_nic.bin
 	doins ${WORKDIR}/rtl8723bs/rtl8723bs_wowlan.bin
+	linux-mod_src_install
 }
+
+#pkg_preinst() {
+#	ewarn "**** Adding Files to Firmware *****"
+#	insinto /lib/firmware/rtlwifi/
+#	doins ${WORKDIR}/rtl8723bs/rtl8723bs_nic.bin
+#	doins ${WORKDIR}/rtl8723bs/rtl8723bs_wowlan.bin
+#}
 
 
