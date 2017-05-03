@@ -1,0 +1,101 @@
+diff --git a/dix/window.c b/dix/window.c
+index d293e90..c33514b 100644
+--- a/dix/window.c
++++ b/dix/window.c
+@@ -550,9 +550,13 @@ InitRootWindow(WindowPtr pWin)
+     pWin->optional->cursor = rootCursor;
+     rootCursor->refcnt++;
+ 
++    pWin->backingStore = defaultBackingStore;
++    pWin->forcedBS = (defaultBackingStore != NotUseful);
++
+     if (party_like_its_1989) {
+         MakeRootTile(pWin);
+         backFlag |= CWBackPixmap;
++        (*pScreen->ChangeWindowAttributes)(pWin, backFlag);
+     }
+     else if (pScreen->canDoBGNoneRoot && bgNoneRoot) {
+         pWin->backgroundState = XaceBackgroundNoneState(pWin);
+@@ -560,19 +564,9 @@ InitRootWindow(WindowPtr pWin)
+         backFlag |= CWBackPixmap;
+     }
+     else {
+-        pWin->backgroundState = BackgroundPixel;
+-        if (whiteRoot)
+-            pWin->background.pixel = pScreen->whitePixel;
+-        else
+-            pWin->background.pixel = pScreen->blackPixel;
+-        backFlag |= CWBackPixel;
++	/* nothing, handled in xf86CreateRootWindow */
+     }
+ 
+-    pWin->backingStore = defaultBackingStore;
+-    pWin->forcedBS = (defaultBackingStore != NotUseful);
+-    /* We SHOULD check for an error value here XXX */
+-    (*pScreen->ChangeWindowAttributes) (pWin, backFlag);
+-
+     MapWindow(pWin, serverClient);
+ }
+ 
+diff --git a/hw/xfree86/common/xf86Init.c b/hw/xfree86/common/xf86Init.c
+index 5263b5f..eb530bb 100644
+--- a/hw/xfree86/common/xf86Init.c
++++ b/hw/xfree86/common/xf86Init.c
+@@ -60,6 +60,7 @@
+ #ifdef XFreeXDGA
+ #include "dgaproc.h"
+ #endif
++#include "xace.h"
+ 
+ #define XF86_OS_PRIVS
+ #include "xf86.h"
+@@ -308,6 +309,7 @@ xf86CreateRootWindow(WindowPtr pWin)
+     int ret = TRUE;
+     int err = Success;
+     ScreenPtr pScreen = pWin->drawable.pScreen;
++    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+     RootWinPropPtr pProp;
+     CreateWindowProcPtr CreateWindow = (CreateWindowProcPtr)
+         dixLookupPrivate(&pScreen->devPrivates, xf86CreateRootWindowKey);
+@@ -357,6 +359,15 @@ xf86CreateRootWindow(WindowPtr pWin)
+         }
+     }
+ 
++    if (pScrn->canDoBGNoneRoot) {
++        pWin->backgroundState = XaceBackgroundNoneState(pWin);
++        pWin->background.pixel = pScreen->whitePixel;
++        pScreen->ChangeWindowAttributes(pWin, CWBackPixmap | CWBorderPixel | CWCursor | CWBackingStore);
++    } else {
++        pWin->background.pixel = pScreen->blackPixel;
++        pScreen->ChangeWindowAttributes(pWin, CWBackPixel | CWBorderPixel | CWCursor | CWBackingStore);
++    }
++
+     DebugF("xf86CreateRootWindow() returns %d\n", ret);
+     return ret;
+ }
+diff --git a/hw/xfree86/common/xf86str.h b/hw/xfree86/common/xf86str.h
+index e2ca558..e1c5331 100644
+--- a/hw/xfree86/common/xf86str.h
++++ b/hw/xfree86/common/xf86str.h
+@@ -497,7 +497,7 @@ typedef struct _confdrirec {
+ } confDRIRec, *confDRIPtr;
+ 
+ /* These values should be adjusted when new fields are added to ScrnInfoRec */
+-#define NUM_RESERVED_INTS		16
++#define NUM_RESERVED_INTS		15
+ #define NUM_RESERVED_POINTERS		14
+ #define NUM_RESERVED_FUNCS		10
+ 
+@@ -758,6 +758,9 @@ typedef struct _ScrnInfoRec {
+     ClockRangePtr clockRanges;
+     int adjustFlags;
+ 
++    /* -nr support */
++    int                        canDoBGNoneRoot;
++
+     /*
+      * These can be used when the minor ABI version is incremented.
+      * The NUM_* parameters must be reduced appropriately to keep the
+-- 
+1.7.7.3
+

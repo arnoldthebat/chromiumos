@@ -1,0 +1,22 @@
+diff --git a/dix/window.c b/dix/window.c
+index 823294b..d293e90 100644
+--- a/dix/window.c
++++ b/dix/window.c
+@@ -1083,12 +1083,8 @@ ChangeWindowAttributes(WindowPtr pWin, Mask vmask, XID *vlist, ClientPtr client)
+             if (pixID == None) {
+                 if (pWin->backgroundState == BackgroundPixmap)
+                     (*pScreen->DestroyPixmap) (pWin->background.pixmap);
+-                if (!pWin->parent)
+-                    SetRootWindowBackground(pWin, pScreen, &index2);
+-                else {
+-                    pWin->backgroundState = XaceBackgroundNoneState(pWin);
+-                    pWin->background.pixel = pScreen->whitePixel;
+-                }
++                pWin->backgroundState = XaceBackgroundNoneState(pWin);
++                pWin->background.pixel = pScreen->whitePixel;
+             }
+             else if (pixID == ParentRelative) {
+                 if (pWin->parent &&
+-- 
+1.7.7.3
+

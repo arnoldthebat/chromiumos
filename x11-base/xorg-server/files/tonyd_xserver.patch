@@ -1,0 +1,42 @@
+diff --git a/dix/window.c b/dix/window.c
+index ead4dc2..7002133 100644
+--- a/dix/window.c
++++ b/dix/window.c
+@@ -1204,12 +1204,8 @@ ChangeWindowAttributes(WindowPtr pWin, Mask vmask, XID *vlist, ClientPtr client)
+             if (pixID == None) {
+                 if (pWin->backgroundState == BackgroundPixmap)
+                     (*pScreen->DestroyPixmap) (pWin->background.pixmap);
+-                if (!pWin->parent)
+-                    SetRootWindowBackground(pWin, pScreen, &index2);
+-                else {
+-                    pWin->backgroundState = XaceBackgroundNoneState(pWin);
+-                    pWin->background.pixel = pScreen->whitePixel;
+-                }
++                pWin->backgroundState = XaceBackgroundNoneState(pWin);
++                pWin->background.pixel = pScreen->whitePixel;
+             }
+             else if (pixID == ParentRelative) {
+                 if (pWin->parent &&
+diff --git a/hw/xfree86/common/xf86str.h b/hw/xfree86/common/xf86str.h
+index bfcb75e..3fbee9e 100644
+--- a/hw/xfree86/common/xf86str.h
++++ b/hw/xfree86/common/xf86str.h
+@@ -422,7 +422,7 @@ typedef struct _confdrirec {
+ } confDRIRec, *confDRIPtr;
+ 
+ /* These values should be adjusted when new fields are added to ScrnInfoRec */
+-#define NUM_RESERVED_INTS		16
++#define NUM_RESERVED_INTS		17
+ #define NUM_RESERVED_POINTERS		14
+ #define NUM_RESERVED_FUNCS		10
+ 
+@@ -685,6 +685,9 @@ typedef struct _ScrnInfoRec {
+     ClockRangePtr clockRanges;
+     int adjustFlags;
+ 
++    /* -nr support */
++    int canDoBGNoneRoot;
++
+     /* initial rightof support disable */
+     int                 preferClone;
+ 

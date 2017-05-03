@@ -3,6 +3,6 @@
 
 # Enable a few more video cards as this is a generic board.
 
-
-VIDEO_CARDS="${VIDEO_CARDS} nouveau radeon vesa"
 VIDEO_CARDS="${VIDEO_CARDS} intel i915 i965"
+VIDEO_CARDS="${VIDEO_CARDS} nouveau radeon vesa fbdev modesetting"
+

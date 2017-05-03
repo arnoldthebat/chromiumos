@@ -1,0 +1,77 @@
+From: Yoshiki IGUCHI <yoshiki@chromium.org>
+Date: Mon, 12 Nov 2012 14:21:28 +0800
+Subject: [PATCH] Add the flag to specify the maximum VT number the user
+ can switch to.
+
+This CL adds the flag named '-maxvt', which specify the maximum VT
+number the user can switch to with Ctrl-Alt-Fn keys.
+
+BUG=chromium:153961
+TEST=manual
+---
+ hw/xfree86/common/xf86Events.c |    4 +++-
+ os/utils.c                     |   12 ++++++++++++
+ 2 files changed, 15 insertions(+), 1 deletions(-)
+
+diff --git a/hw/xfree86/common/xf86Events.c b/hw/xfree86/common/xf86Events.c
+index 3ad34b5..cfe92f0 100644
+--- a/hw/xfree86/common/xf86Events.c
++++ b/hw/xfree86/common/xf86Events.c
+@@ -100,6 +100,8 @@ Bool VTSwitchEnabled = TRUE;    /* Allows run-time disabling for
+ 
+ extern fd_set EnabledDevices;
+ 
++extern int maxVT;
++
+ #ifdef XF86PM
+ extern void (*xf86OSPMClose) (void);
+ #endif
+@@ -198,7 +200,7 @@ xf86ProcessActionEvent(ActionEvent action, void *arg)
+         if (VTSwitchEnabled && !xf86Info.dontVTSwitch && arg) {
+             int vtno = *((int *) arg);
+ 
+-            if (vtno != xf86Info.vtno) {
++            if ((maxVT < 0 || vtno <= maxVT) && vtno != xf86Info.vtno) {
+                 if (!xf86VTActivate(vtno)) {
+                     ErrorF("Failed to switch from vt%02d to vt%02d: %s\n",
+                            xf86Info.vtno, vtno, strerror(errno));
+diff --git a/os/utils.c b/os/utils.c
+index 04bcbc6..8b19838 100644
+--- a/os/utils.c
++++ b/os/utils.c
+@@ -202,6 +202,8 @@ Bool PanoramiXExtensionDisabledHack = FALSE;
+ 
+ int auditTrailLevel = 1;
+ 
++int maxVT = -1;
++
+ char *SeatId = NULL;
+ 
+ #if defined(SVR4) || defined(__linux__) || defined(CSRG_BASED)
+@@ -502,6 +504,7 @@ UseMsg(void)
+ #ifdef RLIMIT_STACK
+     ErrorF("-ls int                limit stack space to N Kb\n");
+ #endif
++    ErrorF("-maxvt int             maximum switchable VT, -1 to permit any\n");
+     ErrorF("-nolock                disable the locking mechanism\n");
+     ErrorF("-nolisten string       don't listen on protocol\n");
+     ErrorF("-noreset               don't reset after last client exists\n");
+@@ -734,6 +737,15 @@ ProcessCommandLine(int argc, char *argv[])
+                 UseMsg();
+         }
+ #endif
++        else if (strcmp(argv[i], "-maxvt") == 0) {
++            if (++i < argc) {
++                maxVT = atoi(argv[i]);
++                if (maxVT < 0)
++                    maxVT = -1;
++            }
++            else
++                UseMsg();
++        }
+         else if (strcmp(argv[i], "-nolock") == 0) {
+ #if !defined(WIN32) && !defined(__CYGWIN__)
+             if (getuid() != 0)
+-- 
+1.7.7.3
+

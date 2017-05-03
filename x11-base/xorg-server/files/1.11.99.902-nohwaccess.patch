@@ -1,0 +1,62 @@
+Subject: [PATCH] xorg-server: add the ability to run without root privileges.
+
+Of course we'll need more changes in our startup scripts for this to work.
+---
+ hw/xfree86/os-support/linux/lnx_init.c  |    7 +++++++
+ hw/xfree86/os-support/linux/lnx_video.c |    4 ++++
+ 2 files changed, 11 insertions(+), 0 deletions(-)
+
+diff --git a/hw/xfree86/os-support/linux/lnx_init.c b/hw/xfree86/os-support/linux/lnx_init.c
+index 2176985..70c99b0 100644
+--- a/hw/xfree86/os-support/linux/lnx_init.c
++++ b/hw/xfree86/os-support/linux/lnx_init.c
+@@ -39,6 +39,7 @@
+ #include <sys/stat.h>
+ 
+ static Bool KeepTty = FALSE;
++Bool NoHwAccess = FALSE;
+ static int activeVT = -1;
+ 
+ static char vtname[11];
+@@ -314,6 +315,11 @@ xf86ProcessArgument(int argc, char *argv[], int i)
+         return 1;
+     }
+ 
++    if (!strcmp(argv[i], "-nohwaccess"))
++    {
++        NoHwAccess = TRUE;
++        return(1);
++    }
+     if ((argv[i][0] == 'v') && (argv[i][1] == 't')) {
+         if (sscanf(argv[i], "vt%2d", &xf86Info.vtno) == 0) {
+             UseMsg();
+@@ -331,4 +337,5 @@ xf86UseMsg(void)
+     ErrorF("vtXX                   use the specified VT number\n");
+     ErrorF("-keeptty               ");
+     ErrorF("don't detach controlling tty (for debugging only)\n");
++    ErrorF("-nohwaccess            don't access hardware ports directly\n");
+ }
+diff --git a/hw/xfree86/os-support/linux/lnx_video.c b/hw/xfree86/os-support/linux/lnx_video.c
+index 0d91f7a..42f42d6 100644
+--- a/hw/xfree86/os-support/linux/lnx_video.c
++++ b/hw/xfree86/os-support/linux/lnx_video.c
+@@ -39,6 +39,7 @@
+ #include "xf86_OSlib.h"
+ #include "xf86OSpriv.h"
+ 
++extern Bool NoHwAccess;
+ static Bool ExtendedEnabled = FALSE;
+ 
+ #ifdef __ia64__
+@@ -148,6 +149,10 @@
+ Bool
+ xf86EnableIO(void)
+ {
++    /* Fake it... */
++    if (NoHwAccess)
++        return TRUE;
++
+     if (ExtendedEnabled)
+         return TRUE;
+
+
