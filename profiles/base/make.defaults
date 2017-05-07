@@ -5,4 +5,4 @@
 
 
 VIDEO_CARDS="${VIDEO_CARDS} nouveau radeon vesa"
-VIDEO_CARDS="${VIDEO_CARDS} intel i915 i965"
+VIDEO_CARDS="${VIDEO_CARDS} intel i915 i965 fbdev modesetting"
