@@ -1,8 +1,23 @@
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Distributed under the terms of the GNU General Public License v2
 
+# Include many firmwares as this is a "generic" board and might run on a
+# wide variety of platforms with who knows what kind of hardware.
+LINUX_FIRMWARE="${LINUX_FIRMWARE} iwlwifi-all"
+
+# Initial value just for style purposes.
+USE=""
+
+USE="${USE} legacy_keyboard legacy_power_button sse kernel-4_4"
+
+# Enable all optional features on generic overlays.
+USE="${USE} buffet peerd -wifi_bootstrapping"
+#USE="${USE} tpm2-simulator"
+USE="${USE} chrome_media"
 # Enable a few more video cards as this is a generic board.
 
 
-VIDEO_CARDS="${VIDEO_CARDS} nouveau radeon vesa"
+VIDEO_CARDS="${VIDEO_CARDS} nouveau radeon vesa radeonsi"
 VIDEO_CARDS="${VIDEO_CARDS} intel i915 i965"
+
+INPUT_DEVICES="keyboard mouse evdev synaptics"
