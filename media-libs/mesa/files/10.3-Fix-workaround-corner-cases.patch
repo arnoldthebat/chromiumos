@@ -1,0 +1,77 @@
+From 437488394df29da9ef9b9b59ac8518c963232fc7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?St=C3=A9phane=20Marchesin?= <marcheu@chromium.org>
+Date: Wed, 15 Oct 2014 13:34:56 -0700
+Subject: [PATCH 16/24] CHROMIUM: i965: Fix corner cases of brw depth stencil workaround
+
+Since we can't repro this bug, it's hard to track it down, but it
+looks like there are multiple issues with the workaround, which this
+patch tries to fix.
+
+This fixes two corner cases with the workaround:
+- Fix the case where there is a depth but no stencil
+- Fix the case there the depth mt hasn't been created
+
+BUG=chromium:423546
+TEST=builds and runs on link
+
+Signed-off-by: Stéphane Marchesin <marcheu@chromium.org>
+Signed-off-by: Prince Agyeman <prince.agyeman@intel.com>
+Signed-off-by: Dhinakaran Pandiyan <dhinakaran.pandiyan@intel.com>
+Signed-off-by: James Ausmus <james.ausmus@intel.com>
+Signed-off-by: Tomasz Figa <tfiga@chromium.org>
+---
+ src/mesa/drivers/dri/i965/brw_misc_state.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/src/mesa/drivers/dri/i965/brw_misc_state.c b/src/mesa/drivers/dri/i965/brw_misc_state.c
+index 21ce2ed00194..3022dc21ba5e 100644
+--- a/src/mesa/drivers/dri/i965/brw_misc_state.c
++++ b/src/mesa/drivers/dri/i965/brw_misc_state.c
+@@ -256,7 +256,7 @@ brw_workaround_depthstencil_alignment(struct brw_context *brw,
+    brw->depthstencil.stencil_mt = NULL;
+    if (depth_irb)
+       brw->depthstencil.depth_mt = depth_mt;
+-   if (stencil_irb)
++   if (stencil_irb && stencil_irb->mt)
+       brw->depthstencil.stencil_mt = get_stencil_miptree(stencil_irb);
+ 
+    /* Gen6+ doesn't require the workarounds, since we always program the
+@@ -275,7 +275,7 @@ brw_workaround_depthstencil_alignment(struct brw_context *brw,
+     * separate stencil.  To catch that case, we check whether
+     * depth_mt->stencil_mt is non-NULL.
+     */
+-   if (depth_irb && invalidate_depth &&
++   if (depth_irb && depth_mt && invalidate_depth &&
+        (_mesa_get_format_base_format(depth_mt->format) == GL_DEPTH_STENCIL ||
+         depth_mt->stencil_mt)) {
+       invalidate_depth = invalidate_stencil && depth_irb && stencil_irb
+@@ -330,7 +330,7 @@ brw_workaround_depthstencil_alignment(struct brw_context *brw,
+          tile_y = depth_irb->draw_y & tile_mask_y;
+       }
+ 
+-      if (stencil_irb) {
++      if (stencil_irb && stencil_irb->mt) {
+          stencil_mt = get_stencil_miptree(stencil_irb);
+          intel_miptree_get_image_offset(stencil_mt,
+                                         stencil_irb->mt_level,
+@@ -352,7 +352,7 @@ brw_workaround_depthstencil_alignment(struct brw_context *brw,
+    }
+ 
+    /* If we have (just) stencil, check it for ignored low bits as well */
+-   if (stencil_irb) {
++   if (stencil_irb && stencil_irb->mt) {
+       intel_miptree_get_image_offset(stencil_mt,
+                                      stencil_irb->mt_level,
+                                      stencil_irb->mt_layer,
+@@ -455,7 +455,7 @@ brw_workaround_depthstencil_alignment(struct brw_context *brw,
+                                              false);
+       }
+    }
+-   if (stencil_irb) {
++   if (stencil_irb && stencil_irb->mt) {
+       stencil_mt = get_stencil_miptree(stencil_irb);
+ 
+       brw->depthstencil.stencil_mt = stencil_mt;
+-- 
+2.5.1
+

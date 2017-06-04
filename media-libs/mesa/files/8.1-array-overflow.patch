@@ -1,0 +1,33 @@
+From 71bb9a0967dc9e9047cf647e3c5594ce379edb2c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?St=C3=A9phane=20Marchesin?= <marcheu@chromium.org>
+Date: Mon, 7 Mar 2016 18:25:25 -0800
+Subject: [PATCH] CHROMIUM: glsl: Avoid crash when overflowing the samplers array
+
+Fixes a crash when we have too many samplers.
+
+BUG=chromium:141901
+TEST=by hand
+
+Signed-off-by: Prince Agyeman <prince.agyeman@intel.com>
+Signed-off-by: Dhinakaran Pandiyan <dhinakaran.pandiyan@intel.com>
+Signed-off-by: James Ausmus <james.ausmus@intel.com>
+Signed-off-by: Tomasz Figa <tfiga@chromium.org>
+---
+ src/compiler/glsl/link_uniforms.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/compiler/glsl/link_uniforms.cpp b/src/compiler/glsl/link_uniforms.cpp
+index 940cc61..f61e478 100644
+--- a/src/compiler/glsl/link_uniforms.cpp
++++ b/src/compiler/glsl/link_uniforms.cpp
+@@ -630,6 +630,7 @@ private:
+              */
+             uniform->opaque[shader_type].index = this->next_sampler;
+             this->next_sampler += MAX2(1, uniform->array_elements);
++            this->next_sampler = MIN2(this->next_sampler, MAX_SAMPLERS);
+          }
+ 
+          const gl_texture_index target = base_type->sampler_index();
+-- 
+2.7.0.rc3.207.g0ac5344
+

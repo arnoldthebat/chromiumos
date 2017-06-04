@@ -1,0 +1,532 @@
+From d35d4be163466cee7d0f06249475e7f688f49acd Mon Sep 17 00:00:00 2001
+From: Zach Reizner <zachr@chromium.org>
+Date: Tue, 3 May 2016 16:04:59 -0700
+Subject: [PATCH] CHROMIUM: dri: add swrast support on top of prime imported
+ buffers
+
+This patch adds support for importing and mmapping PRIME buffers using
+vgem render node.
+
+BUG=chromium:394868
+BUG=chromium:469666
+TEST=boot freon ChromeOS under qemu and see the UI
+
+Signed-off-by: Tomasz Figa <tfiga@chromium.org>
+---
+ src/gallium/state_trackers/dri/Makefile.am |   1 +
+ src/gallium/state_trackers/dri/drisw.c     | 127 +++++++++++++++++
+ src/gallium/winsys/sw/dri/Makefile.am      |   5 +
+ src/gallium/winsys/sw/dri/dri_sw_winsys.c  | 222 ++++++++++++++++++++++++++---
+ 4 files changed, 339 insertions(+), 16 deletions(-)
+
+diff --git a/src/gallium/state_trackers/dri/Makefile.am b/src/gallium/state_trackers/dri/Makefile.am
+index 74bccaa..d7cf34b 100644
+--- a/src/gallium/state_trackers/dri/Makefile.am
++++ b/src/gallium/state_trackers/dri/Makefile.am
+@@ -28,6 +28,7 @@ AM_CPPFLAGS = \
+ 	-I$(top_srcdir)/include \
+ 	-I$(top_srcdir)/src/mapi \
+ 	-I$(top_srcdir)/src/mesa \
++	-I$(top_srcdir)/src/gallium/include/state_tracker \
+ 	-I$(top_srcdir)/src/mesa/drivers/dri/common \
+ 	-I$(top_builddir)/src/mesa/drivers/dri/common \
+ 	$(GALLIUM_CFLAGS) \
+diff --git a/src/gallium/state_trackers/dri/drisw.c b/src/gallium/state_trackers/dri/drisw.c
+index b85a73c..e5f59ae 100644
+--- a/src/gallium/state_trackers/dri/drisw.c
++++ b/src/gallium/state_trackers/dri/drisw.c
+@@ -48,6 +48,8 @@
+ #include "dri_drawable.h"
+ #include "dri_query_renderer.h"
+ 
++#include "drm_driver.h"
++
+ DEBUG_GET_ONCE_BOOL_OPTION(swrast_no_present, "SWRAST_NO_PRESENT", FALSE);
+ static boolean swrast_no_present = FALSE;
+ 
+@@ -361,6 +363,126 @@ drisw_update_tex_buffer(struct dri_drawable *drawable,
+    pipe_transfer_unmap(pipe, transfer);
+ }
+ 
++
++static __DRIimage *
++drisw_lookup_egl_image(struct dri_screen *screen, void *handle)
++{
++   const __DRIimageLookupExtension *loader = screen->sPriv->dri2.image;
++   __DRIimage *img;
++
++   if (!loader->lookupEGLImage)
++      return NULL;
++
++   img = loader->lookupEGLImage(screen->sPriv,
++            handle, screen->sPriv->loaderPrivate);
++
++   return img;
++}
++
++static __DRIimage *
++drisw_create_image_from_dma_bufs(__DRIscreen *screen,
++                                 int width, int height, int fourcc,
++                                 int *fds, int num_fds,
++                                 int *strides, int *offsets,
++                                 enum __DRIYUVColorSpace color_space,
++                                 enum __DRISampleRange sample_range,
++                                 enum __DRIChromaSiting horiz_siting,
++                                 enum __DRIChromaSiting vert_siting,
++                                 unsigned *error,
++                                 void *loaderPrivate)
++{
++   struct dri_screen *ds = dri_screen(screen);
++   struct pipe_screen *ps = ds->base.screen;
++   uint32_t dri_format;
++
++   struct pipe_resource templat;
++   memset(&templat, 0, sizeof(templat));
++
++   templat.target = PIPE_TEXTURE_2D;
++   switch (fourcc) {
++   case __DRI_IMAGE_FOURCC_ARGB8888:
++      dri_format =  __DRI_IMAGE_FORMAT_ARGB8888;
++      templat.format = PIPE_FORMAT_BGRA8888_UNORM;
++      break;
++   case __DRI_IMAGE_FOURCC_XRGB8888:
++      dri_format =  __DRI_IMAGE_FORMAT_XRGB8888;
++      templat.format = PIPE_FORMAT_BGRX8888_UNORM;
++      break;
++   case __DRI_IMAGE_FOURCC_ABGR8888:
++   dri_format =  __DRI_IMAGE_FORMAT_ABGR8888;
++      templat.format = PIPE_FORMAT_RGBA8888_UNORM;
++      break;
++   case __DRI_IMAGE_FOURCC_XBGR8888:
++      dri_format =  __DRI_IMAGE_FORMAT_XBGR8888;
++      templat.format = PIPE_FORMAT_RGBX8888_UNORM;
++      break;
++   default:
++      if (error)
++         *error = __DRI_IMAGE_ERROR_BAD_MATCH;
++      return NULL;
++   }
++
++   templat.width0 = width;
++   templat.height0 = height;
++   templat.depth0 = 1;
++   templat.array_size = 1;
++
++   templat.last_level = 0;
++   templat.nr_samples = 0;
++   templat.usage = PIPE_USAGE_DEFAULT;
++
++   templat.bind = PIPE_BIND_RENDER_TARGET | PIPE_BIND_DISPLAY_TARGET |
++                  PIPE_BIND_SAMPLER_VIEW;
++   templat.flags = 0;
++
++   struct winsys_handle handle;
++   memset(&handle, 0, sizeof(handle));
++   handle.type = DRM_API_HANDLE_TYPE_FD;
++   handle.handle = fds[0];
++   handle.stride = strides[0];
++
++   __DRIimage * img = CALLOC_STRUCT(__DRIimageRec);
++   if (!img) {
++      if (error)
++         *error = __DRI_IMAGE_ERROR_BAD_ALLOC;
++      return NULL;
++   }
++
++   img->texture = ps->resource_from_handle(ps, &templat, &handle,
++                                           PIPE_HANDLE_USAGE_READ_WRITE);
++
++   if (!img->texture) {
++      FREE(img);
++      if (error)
++         *error = __DRI_IMAGE_ERROR_BAD_MATCH;
++      return NULL;
++   }
++
++   img->level = 0;
++   img->layer = 0;
++   img->dri_format = dri_format;
++   img->loader_private = loaderPrivate;
++
++   if (error)
++      *error = __DRI_IMAGE_ERROR_SUCCESS;
++
++   return img;
++}
++
++static void
++drisw_destroy_image(__DRIimage *img)
++{
++   pipe_resource_reference(&img->texture, NULL);
++   FREE(img);
++}
++
++static __DRIimageExtension dri2ImageExtension = {
++    .base = { __DRI_IMAGE, 8 },
++
++    .createImageFromDmaBufs = drisw_create_image_from_dma_bufs,
++    .destroyImage = drisw_destroy_image,
++};
++
+ /*
+  * Backend function for init_screen.
+  */
+@@ -369,6 +491,9 @@ static const __DRIextension *drisw_screen_extensions[] = {
+    &driTexBufferExtension.base,
+    &dri2RendererQueryExtension.base,
+    &dri2ConfigQueryExtension.base,
++#ifdef HAVE_LIBDRM
++   &dri2ImageExtension.base,
++#endif
+    NULL
+ };
+ 
+@@ -407,6 +532,8 @@ drisw_init_screen(__DRIscreen * sPriv)
+    if (!configs)
+       goto fail;
+ 
++   screen->lookup_egl_image = drisw_lookup_egl_image;
++
+    return configs;
+ fail:
+    dri_destroy_screen_helper(screen);
+diff --git a/src/gallium/winsys/sw/dri/Makefile.am b/src/gallium/winsys/sw/dri/Makefile.am
+index a7d3253..a0fe9d3 100644
+--- a/src/gallium/winsys/sw/dri/Makefile.am
++++ b/src/gallium/winsys/sw/dri/Makefile.am
+@@ -24,8 +24,13 @@ include Makefile.sources
+ include $(top_srcdir)/src/gallium/Automake.inc
+ 
+ AM_CFLAGS = \
++	-I$(top_srcdir)/src/gallium/include/state_tracker \
+ 	$(GALLIUM_WINSYS_CFLAGS)
+ 
++if HAVE_LIBDRM
++AM_CFLAGS += $(LIBDRM_CFLAGS)
++endif
++
+ noinst_LTLIBRARIES = libswdri.la
+ 
+ libswdri_la_SOURCES = $(C_SOURCES)
+diff --git a/src/gallium/winsys/sw/dri/dri_sw_winsys.c b/src/gallium/winsys/sw/dri/dri_sw_winsys.c
+index 94d5092..741af1b 100644
+--- a/src/gallium/winsys/sw/dri/dri_sw_winsys.c
++++ b/src/gallium/winsys/sw/dri/dri_sw_winsys.c
+@@ -26,6 +26,18 @@
+  *
+  **************************************************************************/
+ 
++#include <fcntl.h>
++#include <stdio.h>
++#include <sys/mman.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <unistd.h>
++
++#if defined(HAVE_LIBDRM)
++#include <xf86drm.h>
++#include <vgem_drm.h>
++#endif
++
+ #include "pipe/p_compiler.h"
+ #include "pipe/p_format.h"
+ #include "util/u_inlines.h"
+@@ -36,14 +48,26 @@
+ #include "state_tracker/sw_winsys.h"
+ #include "dri_sw_winsys.h"
+ 
++#include "drm_driver.h"
++
++
++enum displaytarget_type {
++   DISPLAYTARGET_TYPE_USER,
++   DISPLAYTARGET_TYPE_PRIME,
++};
+ 
+ struct dri_sw_displaytarget
+ {
++   enum displaytarget_type type;
+    enum pipe_format format;
+    unsigned width;
+    unsigned height;
+    unsigned stride;
+ 
++#if defined(HAVE_LIBDRM)
++   uint32_t vgem_handle;
++#endif
++
+    unsigned map_flags;
+    void *data;
+    void *mapped;
+@@ -55,8 +79,75 @@ struct dri_sw_winsys
+    struct sw_winsys base;
+ 
+    struct drisw_loader_funcs *lf;
++
++#if defined(HAVE_LIBDRM)
++   int vgem_fd;
++#endif
+ };
+ 
++#if defined(HAVE_LIBDRM)
++
++const char g_sys_card_path_format[] =
++   "/sys/bus/platform/devices/vgem/drm/renderD%d";
++const char g_dev_card_path_format[] =
++   "/dev/dri/renderD%d";
++
++static int
++drm_open_vgem()
++{
++   char *name;
++   int i, fd;
++
++   for (i = 128; i >= 0; i++) {
++      struct stat _stat;
++      int ret;
++      ret = asprintf(&name, g_sys_card_path_format, i);
++      assert(ret != -1);
++
++      if (stat(name, &_stat) == -1) {
++         free(name);
++         continue;
++      }
++
++      free(name);
++      ret = asprintf(&name, g_dev_card_path_format, i);
++      assert(ret != -1);
++
++      fd = open(name, O_RDWR);
++      free(name);
++      if (fd < 0)
++         continue;
++      return fd;
++   }
++   return -1;
++}
++
++static void *
++mmap_dumb_bo(int fd, int handle, size_t size)
++{
++   struct drm_mode_map_dumb mmap_arg;
++   void *ptr;
++   int ret;
++
++   memset(&mmap_arg, 0, sizeof(mmap_arg));
++
++   mmap_arg.handle = handle;
++
++   ret = drmIoctl(fd, DRM_IOCTL_VGEM_MODE_MAP_DUMB, &mmap_arg);
++   if (ret)
++      return NULL;
++
++   ptr = mmap(NULL, size, (PROT_READ|PROT_WRITE), MAP_SHARED, fd,
++         mmap_arg.offset);
++
++   if (ptr == MAP_FAILED)
++      return NULL;
++
++   return ptr;
++}
++
++#endif
++
+ static inline struct dri_sw_displaytarget *
+ dri_sw_displaytarget( struct sw_displaytarget *dt )
+ {
+@@ -95,6 +186,7 @@ dri_sw_displaytarget_create(struct sw_winsys *winsys,
+    if(!dri_sw_dt)
+       goto no_dt;
+ 
++   dri_sw_dt->type = DISPLAYTARGET_TYPE_USER;
+    dri_sw_dt->format = format;
+    dri_sw_dt->width = width;
+    dri_sw_dt->height = height;
+@@ -119,30 +211,34 @@ no_dt:
+    return NULL;
+ }
+ 
+-static void
+-dri_sw_displaytarget_destroy(struct sw_winsys *ws,
+-                             struct sw_displaytarget *dt)
+-{
+-   struct dri_sw_displaytarget *dri_sw_dt = dri_sw_displaytarget(dt);
+-
+-   align_free(dri_sw_dt->data);
+-
+-   FREE(dri_sw_dt);
+-}
+-
+ static void *
+ dri_sw_displaytarget_map(struct sw_winsys *ws,
+                          struct sw_displaytarget *dt,
+                          unsigned flags)
+ {
+    struct dri_sw_displaytarget *dri_sw_dt = dri_sw_displaytarget(dt);
+-   dri_sw_dt->mapped = dri_sw_dt->data;
++   struct dri_sw_winsys *dri_sw_ws = dri_sw_winsys(ws);
++
++   switch (dri_sw_dt->type) {
++   case DISPLAYTARGET_TYPE_USER:
++      dri_sw_dt->mapped = dri_sw_dt->data;
++      break;
++   case DISPLAYTARGET_TYPE_PRIME:
++      if (dri_sw_ws->vgem_fd >= 0 && !dri_sw_dt->mapped)
++         dri_sw_dt->mapped = mmap_dumb_bo(dri_sw_ws->vgem_fd,
++                                          dri_sw_dt->vgem_handle,
++                                          dri_sw_dt->height * dri_sw_dt->stride);
++      break;
++   default:
++         dri_sw_dt->mapped = NULL;
++   }
+ 
+-   if (dri_sw_dt->front_private && (flags & PIPE_TRANSFER_READ)) {
++   if (dri_sw_dt->mapped && dri_sw_dt->front_private && (flags & PIPE_TRANSFER_READ)) {
+       struct dri_sw_winsys *dri_sw_ws = dri_sw_winsys(ws);
+-      dri_sw_ws->lf->get_image((void *)dri_sw_dt->front_private, 0, 0, dri_sw_dt->width, dri_sw_dt->height, dri_sw_dt->stride, dri_sw_dt->data);
++      dri_sw_ws->lf->get_image((void *)dri_sw_dt->front_private, 0, 0, dri_sw_dt->width, dri_sw_dt->height, dri_sw_dt->stride, dri_sw_dt->mapped);
+    }
+    dri_sw_dt->map_flags = flags;
++
+    return dri_sw_dt->mapped;
+ }
+ 
+@@ -156,25 +252,111 @@ dri_sw_displaytarget_unmap(struct sw_winsys *ws,
+       dri_sw_ws->lf->put_image2((void *)dri_sw_dt->front_private, dri_sw_dt->data, 0, 0, dri_sw_dt->width, dri_sw_dt->height, dri_sw_dt->stride);
+    }
+    dri_sw_dt->map_flags = 0;
++
++#if defined(HAVE_LIBDRM)
++   if (dri_sw_dt->mapped)
++      munmap(dri_sw_dt->mapped, dri_sw_dt->height * dri_sw_dt->stride);
++#endif
+    dri_sw_dt->mapped = NULL;
+ }
+ 
++static void
++dri_sw_displaytarget_destroy(struct sw_winsys *ws,
++                             struct sw_displaytarget *dt)
++{
++   struct dri_sw_winsys *dri_sw_ws = dri_sw_winsys(ws);
++   struct dri_sw_displaytarget *dri_sw_dt = dri_sw_displaytarget(dt);
++
++   if (dri_sw_dt->mapped) {
++      dri_sw_displaytarget_unmap(ws, dt);
++   }
++
++#if defined(HAVE_LIBDRM)
++   if (dri_sw_dt->type == DISPLAYTARGET_TYPE_PRIME && dri_sw_ws->vgem_fd >= 0) {
++      struct drm_gem_close arg;
++      memset(&arg, 0, sizeof(arg));
++      arg.handle = dri_sw_dt->vgem_handle;
++
++      drmIoctl(dri_sw_ws->vgem_fd, DRM_IOCTL_GEM_CLOSE, &arg);
++   }
++#endif
++
++   FREE(dri_sw_dt->data);
++
++   FREE(dri_sw_dt);
++}
++
+ static struct sw_displaytarget *
+-dri_sw_displaytarget_from_handle(struct sw_winsys *winsys,
++dri_sw_displaytarget_from_handle(struct sw_winsys *ws,
+                                  const struct pipe_resource *templ,
+                                  struct winsys_handle *whandle,
+                                  unsigned *stride)
+ {
++#if defined(HAVE_LIBDRM)
++   struct dri_sw_winsys *dri_sw_ws = dri_sw_winsys(ws);
++   uint32_t imported_handle;
++   struct dri_sw_displaytarget *dri_sw_dt;
++
++   if (whandle->type != DRM_API_HANDLE_TYPE_FD || dri_sw_ws->vgem_fd < 0) {
++      return NULL;
++   }
++
++   dri_sw_dt = CALLOC_STRUCT(dri_sw_displaytarget);
++   if(!dri_sw_dt)
++      return NULL;
++
++   int ret = drmPrimeFDToHandle(dri_sw_ws->vgem_fd, whandle->handle,
++                                &imported_handle);
++   if (ret) {
++      FREE(dri_sw_dt);
++      return NULL;
++   }
++
++   dri_sw_dt->type = DISPLAYTARGET_TYPE_PRIME;
++   dri_sw_dt->format = templ->format;
++   dri_sw_dt->width = templ->width0;
++   dri_sw_dt->height = templ->height0;
++   dri_sw_dt->vgem_handle = imported_handle;
++   dri_sw_dt->stride = whandle->stride;
++
++   *stride = dri_sw_dt->stride;
++   return (struct sw_displaytarget *)dri_sw_dt;
++#else
+    assert(0);
+    return NULL;
++#endif
+ }
+ 
+ static boolean
+-dri_sw_displaytarget_get_handle(struct sw_winsys *winsys,
++dri_sw_displaytarget_get_handle(struct sw_winsys *ws,
+                                 struct sw_displaytarget *dt,
+                                 struct winsys_handle *whandle)
+ {
++#if defined(HAVE_LIBDRM)
++   struct dri_sw_winsys *dri_sw_ws = dri_sw_winsys(ws);
++   if (dri_sw_ws->vgem_fd < 0)
++      return FALSE;
++
++   struct dri_sw_displaytarget *dri_sw_dt = dri_sw_displaytarget(dt);
++   if (whandle->type == DRM_API_HANDLE_TYPE_FD &&
++       dri_sw_dt->type == DISPLAYTARGET_TYPE_PRIME) {
++      int prime_fd;
++      int ret = drmPrimeHandleToFD(dri_sw_ws->vgem_fd,
++                                   dri_sw_dt->vgem_handle,
++                                   DRM_CLOEXEC,
++                                   &prime_fd);
++      if (ret || prime_fd < 0)
++         return FALSE;
++
++      whandle->handle = (unsigned)prime_fd;
++      whandle->stride = dri_sw_dt->stride;
++
++      return TRUE;
++   }
++#else
+    assert(0);
++#endif
++
+    return FALSE;
+ }
+ 
+@@ -211,6 +393,11 @@ dri_sw_displaytarget_display(struct sw_winsys *ws,
+ static void
+ dri_destroy_sw_winsys(struct sw_winsys *winsys)
+ {
++#if defined(HAVE_LIBDRM)
++   int vgem_fd = dri_sw_winsys(winsys)->vgem_fd;
++   if (vgem_fd >= 0)
++      close(vgem_fd);
++#endif
+    FREE(winsys);
+ }
+ 
+@@ -224,6 +411,9 @@ dri_create_sw_winsys(struct drisw_loader_funcs *lf)
+       return NULL;
+ 
+    ws->lf = lf;
++#if defined(HAVE_LIBDRM)
++   ws->vgem_fd = drm_open_vgem();
++#endif
+    ws->base.destroy = dri_destroy_sw_winsys;
+ 
+    ws->base.is_displaytarget_format_supported = dri_sw_is_displaytarget_format_supported;
+-- 
+2.8.0.rc3.226.g39d4020
+

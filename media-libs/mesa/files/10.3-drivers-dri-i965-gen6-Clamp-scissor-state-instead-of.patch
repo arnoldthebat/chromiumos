@@ -1,0 +1,72 @@
+From 02f81d05cfd5a77ed7bafc363b91262154c43558 Mon Sep 17 00:00:00 2001
+From: Corbin Simpson <simpsoco@chromium.org>
+Date: Thu, 28 Aug 2014 14:48:31 -0700
+Subject: [PATCH 17/24] CHROMIUM: i965: Clamp scissor state instead of
+ truncating on gen6.
+
+Replaces one undefined behavior with another, slightly more friendly,
+undefined behavior.
+
+This changes glScissor() behavior on i965 to clamp instead of truncate
+out-of-range scissors. Technically either behavior is acceptable, but
+clamping has more predictable results on out-of-range scissors.
+
+BUG=chromium:360217
+TEST=Watched some Youtube on Link; can't reproduce original bug as reported.
+
+Signed-off-by: Corbin Simpson <simpsoco@chromium.org>
+Signed-off-by: Prince Agyeman <prince.agyeman@intel.com>
+Signed-off-by: Dhinakaran Pandiyan <dhinakaran.pandiyan@intel.com>
+Signed-off-by: James Ausmus <james.ausmus@intel.com>
+Signed-off-by: Tomasz Figa <tfiga@chromium.org>
+---
+ src/mesa/drivers/dri/i965/gen6_scissor_state.c | 23 +++++++++++++++--------
+ 1 file changed, 15 insertions(+), 8 deletions(-)
+
+diff --git a/src/mesa/drivers/dri/i965/gen6_scissor_state.c b/src/mesa/drivers/dri/i965/gen6_scissor_state.c
+index 17b4a7fba96b..b7190e4d4f5a 100644
+--- a/src/mesa/drivers/dri/i965/gen6_scissor_state.c
++++ b/src/mesa/drivers/dri/i965/gen6_scissor_state.c
+@@ -32,6 +32,13 @@
+ #include "main/fbobject.h"
+ #include "main/framebuffer.h"
+ 
++/* Clamp scissors to 16-bit unsigned values; otherwise, the compiler truncates
++ * them to fit inside the bitfields, which is often not what is desired.
++ * My reading of GL and GLES specs suggests that overly-large scissor values are
++ * not an erroring condition and that the actual behavior is undefined, so
++ * switching from truncation to clamping is probably not a problem. ~ C. */
++#define CLAMP_SCISSOR(X) CLAMP(X, 0x0000, 0xffff)
++
+ static void
+ gen6_upload_scissor_state(struct brw_context *brw)
+ {
+@@ -77,17 +84,17 @@ gen6_upload_scissor_state(struct brw_context *brw)
+          scissor[i].ymax = 0;
+       } else if (render_to_fbo) {
+          /* texmemory: Y=0=bottom */
+-         scissor[i].xmin = bbox[0];
+-         scissor[i].xmax = bbox[1] - 1;
+-         scissor[i].ymin = bbox[2];
+-         scissor[i].ymax = bbox[3] - 1;
++         scissor[i].xmin = CLAMP_SCISSOR(bbox[0]);
++         scissor[i].xmax = CLAMP_SCISSOR(bbox[1] - 1);
++         scissor[i].ymin = CLAMP_SCISSOR(bbox[2]);
++         scissor[i].ymax = CLAMP_SCISSOR(bbox[3] - 1);
+       }
+       else {
+          /* memory: Y=0=top */
+-         scissor[i].xmin = bbox[0];
+-         scissor[i].xmax = bbox[1] - 1;
+-         scissor[i].ymin = fb_height - bbox[3];
+-         scissor[i].ymax = fb_height - bbox[2] - 1;
++         scissor[i].xmin = CLAMP_SCISSOR(bbox[0]);
++         scissor[i].xmax = CLAMP_SCISSOR(bbox[1] - 1);
++         scissor[i].ymin = CLAMP_SCISSOR(fb_height - bbox[3]);
++         scissor[i].ymax = CLAMP_SCISSOR(fb_height - bbox[2] - 1);
+       }
+    }
+    BEGIN_BATCH(2);
+-- 
+2.5.1
+

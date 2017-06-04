@@ -1,0 +1,41 @@
+From 2982610dbcc703dbcfff4c69fa53d053b1306269 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?St=C3=A9phane=20Marchesin?= <marcheu@chromium.org>
+Date: Tue, 17 Apr 2012 18:16:18 -0700
+Subject: [PATCH 06/24] CHROMIUM: i965: Allow the case where multiple flush
+ types are enqueued.
+
+This happens when the miptree is allocated with intel_miptree_alloc_hiz
+which adds NEED_HIZ_RESOLVE and then NEED_DEPTH_RESOLVE is added to it.
+
+BUG=none
+TEST=by hand
+
+Signed-off-by: Prince Agyeman <prince.agyeman@intel.com>
+Signed-off-by: Dhinakaran Pandiyan <dhinakaran.pandiyan@intel.com>
+Signed-off-by: James Ausmus <james.ausmus@intel.com>
+
+Conflicts:
+	src/mesa/drivers/dri/i965/intel_resolve_map.c
+
+Signed-off-by: Tomasz Figa <tfiga@chromium.org>
+---
+ src/mesa/drivers/dri/i965/intel_resolve_map.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/src/mesa/drivers/dri/i965/intel_resolve_map.c b/src/mesa/drivers/dri/i965/intel_resolve_map.c
+index bf6bcf257a9c..5368fe3c2025 100644
+--- a/src/mesa/drivers/dri/i965/intel_resolve_map.c
++++ b/src/mesa/drivers/dri/i965/intel_resolve_map.c
+@@ -39,8 +39,7 @@ intel_resolve_map_set(struct exec_list *resolve_map,
+ 		      enum gen6_hiz_op need)
+ {
+    foreach_list_typed(struct intel_resolve_map, map, link, resolve_map) {
+-      if (map->level == level && map->layer == layer) {
+-         map->need = need;
++      if (map->level == level && map->layer == layer && map->need == need) {
+ 	 return;
+       }
+    }
+-- 
+2.5.1
+

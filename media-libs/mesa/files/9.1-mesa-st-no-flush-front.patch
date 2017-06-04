@@ -1,0 +1,34 @@
+From 79791851da0dc4bec6f3bf4b473b42a013fb4a09 Mon Sep 17 00:00:00 2001
+From: Stéphane Marchesin <marcheu@chromium.org>
+Date: Mon, 4 May 2015 14:55:19 -0700
+Subject: [PATCH 02/24] CHROMIUM: st/mesa: Do not flush front buffer on context flush
+
+Make gallium work again with new chrome.
+
+BUG=none
+TEST=compile
+
+Signed-off-by: James Ausmus <james.ausmus@intel.com>
+Signed-off-by: Prince Agyeman <prince.agyeman@intel.com>
+Signed-off-by: Dhinakaran Pandiyan <dhinakaran.pandiyan@intel.com>
+Signed-off-by: Tomasz Figa <tfiga@chromium.org>
+---
+ src/mesa/state_tracker/st_manager.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/src/mesa/state_tracker/st_manager.c b/src/mesa/state_tracker/st_manager.c
+index 2e2c8ffaed9f..7ea0064eae17 100644
+--- a/src/mesa/state_tracker/st_manager.c
++++ b/src/mesa/state_tracker/st_manager.c
+@@ -502,8 +502,6 @@ st_context_flush(struct st_context_iface *stctxi, unsigned flags,
+    }
+ 
+    st_flush(st, fence, pipe_flags);
+-   if (flags & ST_FLUSH_FRONT)
+-      st_manager_flush_frontbuffer(st);
+ }
+ 
+ static boolean
+-- 
+2.5.1
+

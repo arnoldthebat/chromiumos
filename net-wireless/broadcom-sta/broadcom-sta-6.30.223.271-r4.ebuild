@@ -6,7 +6,7 @@ EAPI=5
 inherit eutils linux-info linux-mod
 
 DESCRIPTION="Broadcom's IEEE 802.11a/b/g/n hybrid Linux device driver"
-HOMEPAGE="http://www.broadcom.com/support/802.11/"
+HOMEPAGE="https://www.broadcom.com/support/802.11"
 SRC_BASE="http://srv06.arnoldthebat.co.uk/bert/hybrid-v35"
 SRC_URI="x86? ( ${SRC_BASE}-nodebug-pcoem-${PV//\./_}.tar.gz )
 	amd64? ( ${SRC_BASE}_64-nodebug-pcoem-${PV//\./_}.tar.gz )"
