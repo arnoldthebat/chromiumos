@@ -178,7 +178,8 @@ RDEPEND="${RDEPEND}
 	>=media-libs/alsa-lib-1.0.19
 	media-libs/fontconfig
 	media-libs/freetype
-	ozone? ( x11-libs/libdrm )
+	media-libs/harfbuzz
+	x11-libs/libdrm
 	ozone_platform_gbm? ( media-libs/minigbm )
 	media-libs/libpng
 	v4lplugin? ( media-libs/libv4lplugins )
