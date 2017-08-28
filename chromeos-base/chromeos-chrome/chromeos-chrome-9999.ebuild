@@ -32,20 +32,21 @@ IUSE="
 	+accessibility
 	app_shell
 	asan
+	+authpolicy
 	+build_tests
 	+chrome_debug
 	chrome_debug_tests
 	chrome_internal
 	chrome_media
 	+chrome_remoting
-	clang
+	+clang
 	component_build
 	cups
-	envoy
+	+debug_fission
 	evdev_gestures
 	+fonts
-	+gn
 	+gold
+	goma
 	hardfp
 	+highdpi
 	internal_gles_conform
@@ -54,17 +55,19 @@ IUSE="
 	neon
 	opengl
 	opengles
-	ozone
 	+runhooks
+	thinlto
 	+v4l2_codec
 	v4lplugin
 	vaapi
 	verbose
 	vtable_verify
 	xkbcommon
-	X
 	"
-REQUIRED_USE="asan? ( clang )"
+REQUIRED_USE="
+	asan? ( clang )
+	thinlto? ( clang gold )
+	"
 
 OZONE_PLATFORM_PREFIX=ozone_platform_
 OZONE_PLATFORMS=(gbm cast test egltest caca)
@@ -73,7 +76,7 @@ IUSE+=" ${IUSE_OZONE_PLATFORMS}"
 OZONE_PLATFORM_DEFAULT_PREFIX=ozone_platform_default_
 IUSE_OZONE_PLATFORM_DEFAULTS="${OZONE_PLATFORMS[@]/#/${OZONE_PLATFORM_DEFAULT_PREFIX}}"
 IUSE+=" ${IUSE_OZONE_PLATFORM_DEFAULTS}"
-REQUIRED_USE+=" ozone? ( ^^ ( ${IUSE_OZONE_PLATFORM_DEFAULTS} ) )"
+REQUIRED_USE+=" ^^ ( ${IUSE_OZONE_PLATFORM_DEFAULTS} )"
 
 # Do not strip the nacl_helper_bootstrap binary because the binutils
 # objcopy/strip mangles the ELF program headers.
@@ -109,7 +112,6 @@ addwrite "${CHROME_DISTDIR}"
 # chrome destination directory
 CHROME_DIR=/opt/google/chrome
 D_CHROME_DIR="${D}/${CHROME_DIR}"
-RELEASE_EXTRA_CFLAGS=()
 
 # For compilation/local chrome
 BUILDTYPE="${BUILDTYPE:-Release}"
@@ -122,20 +124,29 @@ BUILD_OUT="${BUILD_OUT:-out_${BOARD}}"
 BUILD_OUT_SYM="c"
 
 AFDO_BZ_SUFFIX=".bz2"
+AFDO_GCOV_SUFFIX=".gcov"
+AFDO_PROF_SUFFIX=".prof"
 AFDO_LOCATION=${AFDO_GS_DIRECTORY:-"gs://chromeos-prebuilt/afdo-job/canonicals/"}
+AFDO_LOCATION_LLVM=${AFDO_GS_DIRECTORY:-"gs://chromeos-prebuilt/afdo-job/llvm/"}
 
-# This dictionary contains one entry per architecture. The value for each
+# These dictionaries contain one entry per architecture. The value for each
 # entry is the appropriate AFDO profile for the current version of Chrome.
 declare -A AFDO_FILE
-# The following entries into the AFDO_FILE dictionary are set automatically
+declare -A AFDO_FILE_LLVM
+
+# The following entries into the AFDO_FILE* dictionaries are set automatically
 # by the PFQ builder. Don't change the format of the lines or modify by hand.
-AFDO_FILE["amd64"]="chromeos-chrome-amd64-55.0.2883.105_rc-r1.afdo"
-AFDO_FILE["x86"]="chromeos-chrome-amd64-55.0.2883.105_rc-r1.afdo"
-AFDO_FILE["arm"]="chromeos-chrome-amd64-55.0.2883.105_rc-r1.afdo"
+AFDO_FILE["amd64"]="chromeos-chrome-amd64-60.0.3077.0_rc-r1.afdo"
+AFDO_FILE["x86"]="chromeos-chrome-amd64-60.0.3077.0_rc-r1.afdo"
+AFDO_FILE["arm"]="chromeos-chrome-amd64-60.0.3077.0_rc-r1.afdo"
+
+AFDO_FILE_LLVM["amd64"]="chromeos-chrome-amd64-60.0.3112.90_rc-r1.afdo"
+AFDO_FILE_LLVM["x86"]="chromeos-chrome-amd64-60.0.3112.90_rc-r1.afdo"
+AFDO_FILE_LLVM["arm"]="chromeos-chrome-amd64-60.0.3112.90_rc-r1.afdo"
 
 # This dictionary can be used to manually override the setting for the
 # AFDO profile file. Any non-empty values in this array will take precedence
-# over the values in the AFDO_FILE dictionary.
+# over the values in the AFDO_FILE* dictionaries.
 # Normally one would not set any value for the elements in the dictionary.
 # This is only used when there is some kind of problem with the AFDO profile
 # generation process and one needs to force the use of an older profile.
@@ -149,13 +160,20 @@ add_afdo_files() {
 	for a in "${!AFDO_FILE[@]}" ; do
 		f=${AFDO_FILE[${a}]}
 		if [[ -n ${f} ]]; then
-			SRC_URI+=" afdo_use? ( ${a}? ( ${AFDO_LOCATION}${f}${AFDO_BZ_SUFFIX} ) )"
+			SRC_URI+=" afdo_use? ( ${a}? ( !clang? ( ${AFDO_LOCATION}${f}${AFDO_BZ_SUFFIX} -> ${f}${AFDO_GCOV_SUFFIX}${AFDO_BZ_SUFFIX} ) ) )"
+		fi
+	done
+	for a in "${!AFDO_FILE_LLVM[@]}" ; do
+		f=${AFDO_FILE_LLVM[${a}]}
+		if [[ -n ${f} ]]; then
+			SRC_URI+=" afdo_use? ( ${a}? ( clang? ( ${AFDO_LOCATION_LLVM}${f}${AFDO_BZ_SUFFIX} -> ${f}${AFDO_PROF_SUFFIX}${AFDO_BZ_SUFFIX} ) ) )"
 		fi
 	done
 	for a in "${!AFDO_FROZEN_FILE[@]}" ; do
 		f=${AFDO_FROZEN_FILE[${a}]}
 		if [[ -n ${f} ]]; then
-			SRC_URI+=" afdo_use? ( ${a}? ( ${AFDO_LOCATION}${f}${AFDO_BZ_SUFFIX} ) )"
+			SRC_URI+=" afdo_use? ( ${a}? ( !clang? ( ${AFDO_LOCATION}${f}${AFDO_BZ_SUFFIX} -> ${f}${AFDO_GCOV_SUFFIX}${AFDO_BZ_SUFFIX} ) ) )"
+			SRC_URI+=" afdo_use? ( ${a}? ( clang? ( ${AFDO_LOCATION_LLVM}${f}${AFDO_BZ_SUFFIX} -> ${f}${AFDO_PROF_SUFFIX}${AFDO_BZ_SUFFIX} ) ) )"
 		fi
 	done
 }
@@ -166,15 +184,12 @@ RESTRICT="mirror"
 
 RDEPEND="${RDEPEND}
 	app-arch/bzip2
+	app-crypt/mit-krb5
+	authpolicy? ( chromeos-base/authpolicy )
 	fonts? ( chromeos-base/chromeos-fonts )
-	dev-libs/atk
-	dev-libs/glib
 	dev-libs/nspr
 	>=dev-libs/nss-3.12.2
 	dev-libs/libxml2
-	dev-libs/dbus-glib
-	x11-libs/cairo
-	x11-libs/pango
 	>=media-libs/alsa-lib-1.0.19
 	media-libs/fontconfig
 	media-libs/freetype
@@ -188,25 +203,13 @@ RDEPEND="${RDEPEND}
 	cups? ( net-print/cups )
 	opengl? ( virtual/opengl )
 	opengles? ( virtual/opengles )
+	sys-apps/dbus
 	sys-apps/pciutils
 	virtual/udev
 	sys-libs/libcap
 	chrome_remoting? ( sys-libs/pam )
 	sys-libs/zlib
 	vaapi? ( x11-libs/libva )
-	X? (
-		x11-apps/setxkbmap
-		x11-libs/libX11
-		x11-libs/libXcomposite
-		x11-libs/libXcursor
-		x11-libs/libXdamage
-		x11-libs/libXext
-		x11-libs/libXfixes
-		x11-libs/libXi
-		x11-libs/libXrandr
-		x11-libs/libXrender
-		chrome_remoting? ( x11-libs/libXtst )
-	)
 	xkbcommon? (
 		x11-libs/libxkbcommon
 		x11-misc/xkeyboard-config
@@ -217,7 +220,6 @@ RDEPEND="${RDEPEND}
 	)
 	accessibility? ( app-accessibility/brltty )
 	"
-
 
 DEPEND="${DEPEND}
 	${RDEPEND}
@@ -255,63 +257,27 @@ echox() {
 	# Like the `usex` helper.
 	[[ ${1:-$?} -eq 0 ]] && echo "${2:-yes}" || echo "${3:-no}"
 }
-echo10() { echox ${1:-$?} 1 0 ; }
 echotf() { echox ${1:-$?} true false ; }
-use10()  { usex $1 1 0 ; }
 usetf()  { usex $1 true false ; }
-set_build_defines() {
-	# General build defines.
-	BUILD_DEFINES=(
-		"sysroot=${SYSROOT}"
-		"linux_link_libbrlapi=$(use10 accessibility)"
-		"use_brlapi=$(use10 accessibility)"
-		"${EXTRA_BUILD_ARGS}"
-		"system_libdir=$(get_libdir)"
-		"pkg-config=$(tc-getPKG_CONFIG)"
-		"use_v4l2_codec=$(use10 v4l2_codec)"
-		"use_v4lplugin=$(use10 v4lplugin)"
-		"use_vtable_verify=$(use10 vtable_verify)"
-		"use_ozone=$(use10 ozone)"
-		"use_evdev_gestures=$(use10 evdev_gestures)"
-		"use_xkbcommon=$(use10 xkbcommon)"
-		"internal_gles2_conform_tests=$(use10 internal_gles_conform)"
-		# Use the ChromeOS toolchain and not the one bundled with Chromium.
-		"linux_use_bundled_binutils=0"
-		"linux_use_bundled_gold=0"
-		"linux_use_gold_flags=$(use10 gold)"
-		"linux_use_debug_fission=0"
-		"remoting=$(use10 chrome_remoting)"
-		"chromeos=1"
-		"disable_nacl=$(! use_nacl; echo10)"
-		"icu_use_data_file_flag=1"
-		"use_cras=1"
-		"use_system_minigbm=1"
-		"use_system_harfbuzz=1"
-		"use_cups=$(use10 cups)"
-
-		# Clang features.
-		asan=$(use10 asan)
-		clang=$(use10 clang)
-		clang_use_chrome_plugins=0
-		host_clang=0
-	)
+set_build_args() {
 	BUILD_ARGS=(
 		is_debug=false
 		"${EXTRA_GN_ARGS}"
 		use_v4l2_codec=$(usetf v4l2_codec)
 		use_v4lplugin=$(usetf v4lplugin)
-		use_ozone=$(usetf ozone)
+		use_ozone=true
 		use_evdev_gestures=$(usetf evdev_gestures)
 		use_xkbcommon=$(usetf xkbcommon)
-		# Use the ChromeOS toolchain and not the one bundled with Chromium.
+		# Use the Chrome OS toolchain and not the one bundled with Chromium.
 		linux_use_bundled_binutils=false
 		use_debug_fission=false
 		enable_remoting=$(usetf chrome_remoting)
 		enable_nacl=$(use_nacl; echotf)
 		icu_use_data_file=true
 		use_cras=true
-		# use_system_minigbm is set under 'if use ozone' below.
+		# use_system_minigbm is set below.
 		use_system_harfbuzz=true
+		use_system_freetype=true
 		use_cups=$(usetf cups)
 
 		# Clang features.
@@ -319,6 +285,7 @@ set_build_defines() {
 		is_clang=$(usetf clang)
 		cros_host_is_clang=$(usetf clang)
 		clang_use_chrome_plugins=false
+		use_thin_lto=$(usetf thinlto)
 	)
 	# BUILD_STRING_ARGS needs appropriate quoting. So, we keep them separate and
 	# add them to BUILD_ARGS at the end.
@@ -327,54 +294,43 @@ set_build_defines() {
 		system_libdir="$(get_libdir)"
 		pkg_config="$(tc-getPKG_CONFIG)"
 		target_os=chromeos
+		host_pkg_config="$(tc-getBUILD_PKG_CONFIG)"
 	)
 	use internal_gles_conform && BUILD_ARGS+=( internal_gles2_conform_tests=true )
 
 	# Disable tcmalloc on ARMv6 since it fails to build (crbug.com/181385)
 	if [[ ${CHOST} == armv6* ]]; then
-		BUILD_DEFINES+=( use_allocator=none )
 		BUILD_ARGS+=( arm_version=6 )
 		BUILD_STRING_ARGS+=( use_allocator=none )
 	fi
 
-	if use ozone; then
-		local platform
-		for platform in ${OZONE_PLATFORMS[@]}; do
-			local flag="${OZONE_PLATFORM_DEFAULT_PREFIX}${platform}"
-			if use "${flag}"; then
-				BUILD_DEFINES+=("ozone_platform=${platform}")
-				BUILD_STRING_ARGS+=(ozone_platform="${platform}")
-			fi
-		done
-		BUILD_DEFINES+=(
-			"ozone_auto_platforms=0"
-		)
-		BUILD_ARGS+=(
-			ozone_auto_platforms=false
-		)
-		for platform in ${IUSE_OZONE_PLATFORMS}; do
-			if use "${platform}"; then
-				BUILD_DEFINES+=("${platform}=1")
-				BUILD_ARGS+=("${platform}"=true)
-			fi
-		done
-		if use "ozone_platform_gbm"; then
-			BUILD_ARGS+=(use_system_minigbm=true)
+	# Ozone platforms.
+	local platform
+	for platform in ${OZONE_PLATFORMS[@]}; do
+		local flag="${OZONE_PLATFORM_DEFAULT_PREFIX}${platform}"
+		if use "${flag}"; then
+			BUILD_STRING_ARGS+=(ozone_platform="${platform}")
 		fi
+	done
+	BUILD_ARGS+=(
+		ozone_auto_platforms=false
+	)
+	for platform in ${IUSE_OZONE_PLATFORMS}; do
+		if use "${platform}"; then
+			BUILD_ARGS+=("${platform}"=true)
+		fi
+	done
+	if use "ozone_platform_gbm"; then
+		BUILD_ARGS+=(use_system_minigbm=true)
+		BUILD_ARGS+=(use_system_libdrm=true)
 	fi
 
-	# Set proper BUILD_DEFINES for the arch
+	# Set proper build args for the arch
 	case "${ARCH}" in
 	x86)
-		BUILD_DEFINES+=( target_arch=ia32 )
 		BUILD_STRING_ARGS+=( target_cpu=x86 )
 		;;
 	arm)
-		BUILD_DEFINES+=(
-			target_arch=arm
-			arm_float_abi=$(usex hardfp hard softfp)
-			arm_neon=$(use10 neon)
-		)
 		BUILD_ARGS+=(
 			arm_use_neon=$(usetf neon)
 		)
@@ -382,12 +338,23 @@ set_build_defines() {
 			target_cpu=arm
 			arm_float_abi=$(usex hardfp hard softfp)
 		)
-		if [[ -n "${ARM_FPU}" ]]; then
-			BUILD_DEFINES+=( arm_fpu="${ARM_FPU}" )
+		local arm_arch=$(get-flag march)
+		local arm_cpu=$(get-flag mcpu)
+		# Chrome's build/config/arm.gni uses -march=armv7-a when
+		# arm_arch is empty. However, GCC complains when -march=armv7-a
+		# is used for armv7ve CPUs. OTOH clang rejects -march=armv7ve as
+		# an invalid option (crbug.com/671089).
+		if ! use clang && [[ -z "${arm_arch}" ]] &&
+			[[ "${arm_cpu}" == "cortex-a7" ||
+				"${arm_cpu}" == "cortex-a12" ||
+				"${arm_cpu}" == "cortex-a15" ]]; then
+			arm_arch="armv7ve"
+		fi
+		if [[ -n "${arm_arch}" ]]; then
+			BUILD_STRING_ARGS+=( arm_arch="${arm_arch}" )
 		fi
 		;;
 	amd64)
-		BUILD_DEFINES+=( target_arch=x64 )
 		BUILD_STRING_ARGS+=( target_cpu=x64 )
 		;;
 	mips)
@@ -407,10 +374,6 @@ set_build_defines() {
 			;;
 		esac
 
-		BUILD_DEFINES+=(
-			target_arch="${target_arch}"
-			mips_arch_variant="${mips_arch}"
-		)
 		BUILD_STRING_ARGS+=(
 			target_cpu="${target_arch}"
 			mips_arch_variant="${mips_arch}"
@@ -422,72 +385,68 @@ set_build_defines() {
 	esac
 
 	if use chrome_internal; then
-		# Adding chrome branding specific variables and GYP_DEFINES.
-		BUILD_DEFINES+=( branding=Chrome buildtype=Official )
+		# Adding chrome branding specific variables.
 		BUILD_ARGS+=( is_chrome_branded=true is_official_build=true )
-		# This test can only be build from internal sources
-		BUILD_DEFINES+=( internal_gles2_conform_tests=1 )
+		# This test can only be build from internal sources.
 		BUILD_ARGS+=( internal_gles2_conform_tests=true )
 		export CHROMIUM_BUILD='_google_Chrome'
 		export OFFICIAL_BUILD='1'
 		export CHROME_BUILD_TYPE='_official'
-
-		# For internal builds, don't remove webcore debug symbols by default.
-		REMOVE_WEBCORE_DEBUG_SYMBOLS=${REMOVE_WEBCORE_DEBUG_SYMBOLS:-0}
 	elif use chrome_media; then
 		echo "Building Chromium with additional media codecs and containers."
-		BUILD_DEFINES+=( ffmpeg_branding=ChromeOS proprietary_codecs=1 )
 		BUILD_ARGS+=( proprietary_codecs=true )
 		BUILD_STRING_ARGS+=( ffmpeg_branding=ChromeOS )
 	fi
 
-	# This saves time and bytes.
-	if [[ "${REMOVE_WEBCORE_DEBUG_SYMBOLS:-1}" == "1" ]]; then
-		BUILD_DEFINES+=( remove_webcore_debug_symbols=1 )
-	fi
-
 	if use clang; then
-		BUILD_DEFINES+=(
-			werror=
-		)
 		BUILD_ARGS+=(
 			treat_warnings_as_errors=false
 		)
-		# The chrome build system will add -m32 for 32bit arches, and
-		# clang defaults to 64bit because our cros_sdk is 64bit default.
-		export CC="clang" CXX="clang++"
 	else
 		cros_use_gcc
 	fi
 
 	if use component_build; then
-		BUILD_DEFINES+=( component=shared_library )
 		BUILD_ARGS+=( is_component_build=true )
 	fi
+	if use goma; then
+		BUILD_ARGS+=( use_goma=true )
+		BUILD_STRING_ARGS+=( goma_dir="${GOMA_DIR:-/home/${WHOAMI}/goma}" )
 
-	# TODO(davidjames): Pass in all CFLAGS this way, once gyp is smart enough
-	# to accept cflags that only apply to the target.
+		# Goma compiler proxy runs outside of portage build.
+		# Practically, because TMPDIR is set in portage, it is
+		# different from the directory used when the compiler proxy
+		# started.
+		# If GOMA_TMP_DIR is not set, the compiler proxy uses
+		# TMPDIR/goma_${WHOAMI} for its tmpdir as fallback, which
+		# causes unexpected behavior.
+		# Specifically, named socket used to communicate with compiler
+		# proxy is ${GOMA_TMP_DIR}/goma.ipc by default, so the compiler
+		# proxy cannot be reached.
+		# Thus, here set GOMA_TMP_DIR to /tmp/goma_${WHOAMI} if it is
+		# not yet set.
+		if [[ -z "${GOMA_TMP_DIR}" ]]; then
+			export GOMA_TMP_DIR="/tmp/goma_${WHOAMI}"
+		fi
+	fi
+
 	if use chrome_debug; then
-		if use x86 || use arm; then
+		if use debug_fission; then
 			# Use debug fission to avoid 4GB limit of ELF32 (see crbug.com/595763).
 			# Using -g1 causes problems with crash server (see crbug.com/601854).
-			RELEASE_EXTRA_CFLAGS+=( -gsplit-dwarf )
+			# Set use_debug_fission=true to prevent slow link (see crbug.com/703468).
+			# Disable debug_fission for bots which generate Afdo profile. (see crbug.com/704602).
 			BUILD_ARGS+=( use_debug_fission=true )
-		else
-			RELEASE_EXTRA_CFLAGS+=( -g )
+
+			# The breakpad cannot handle the debug files generated by
+			# llvm and debug fission properly. crosbug.com/710605
+			if use clang; then
+				append-flags -fno-split-dwarf-inlining
+			fi
 		fi
 		BUILD_ARGS+=( symbol_level=2 )
 	fi
 
-	use envoy && BUILD_DEFINES+=( envoy=1 )
-
-	# This requires some extreme quoting in order to support multiple flags,
-	# e.g. "-gsplit-dwarf -g". This will be deprecated once we switch to gn.
-	BUILD_DEFINES+=( "release_extra_cflags=\"'${RELEASE_EXTRA_CFLAGS[*]}'\"" )
-
-	export GYP_GENERATORS="ninja"
-	export GYP_DEFINES="${BUILD_DEFINES[*]}"
-	export builddir_name="${BUILD_OUT}"
 	# Prevents gclient from updating self.
 	export DEPOT_TOOLS_UPDATE=0
 }
@@ -617,7 +576,7 @@ src_unpack() {
 
 	case "${CHROME_ORIGIN}" in
 	LOCAL_SOURCE|SERVER_SOURCE)
-		set_build_defines
+		set_build_args
 		;;
 	esac
 
@@ -642,19 +601,30 @@ src_unpack() {
 		fi
 	fi
 
-	if use afdo_use && ! use clang; then
+	if use afdo_use; then
 		local PROFILE_DIR="${WORKDIR}/afdo"
 		mkdir "${PROFILE_DIR}"
 		pushd "${PROFILE_DIR}" > /dev/null
 
 		# First check if there is a specified "frozen" AFDO profile.
 		# Otherwise use the current one.
-		local PROFILE_FILE="${AFDO_FROZEN_FILE[${ARCH}]}"
-		local PROFILE_STATE="FROZEN"
-		if [[ -z ${PROFILE_FILE} ]]; then
-			PROFILE_FILE="${AFDO_FILE[${ARCH}]}"
-			PROFILE_STATE="CURRENT"
+
+		local PROFILE_STATE="CURRENT"
+		local PROFILE_FILE=${AFDO_FILE[${ARCH}]}
+		local PROFILE_SUFFIX=${AFDO_GCOV_SUFFIX}
+
+		if use clang; then
+			PROFILE_FILE=${AFDO_FILE_LLVM[${ARCH}]}
+			PROFILE_SUFFIX=${AFDO_PROF_SUFFIX}
 		fi
+
+		if [[ -n ${AFDO_FROZEN_FILE[${ARCH}]} ]]; then
+			PROFILE_STATE="FROZEN"
+			PROFILE_FILE=${AFDO_FROZEN_FILE[${ARCH}]}
+		fi
+
+		PROFILE_FILE=${PROFILE_FILE}${PROFILE_SUFFIX}
+
 		[[ -n ${PROFILE_FILE} ]] || die "Missing AFDO profile for ${ARCH}"
 		unpack "${PROFILE_FILE}${AFDO_BZ_SUFFIX}"
 		popd > /dev/null
@@ -665,39 +635,19 @@ src_unpack() {
 }
 
 add_api_keys() {
-	if use gn; then
-		# awk script to extract the values out of the file.
-		local EXTRACT="{ gsub(/[',]/, \"\", \$2); print \$2 }"
-		local api_key=$(awk "/google_api_key/ ${EXTRACT}" "$1")
-		local client_id=$(awk "/google_default_client_id/ ${EXTRACT}" "$1")
-		local client_secret=$(awk "/google_default_client_secret/ ${EXTRACT}" "$1")
+	# awk script to extract the values out of the file.
+	local EXTRACT="{ gsub(/[',]/, \"\", \$2); print \$2 }"
+	local api_key=$(awk "/google_api_key/ ${EXTRACT}" "$1")
+	local client_id=$(awk "/google_default_client_id/ ${EXTRACT}" "$1")
+	local client_secret=$(awk "/google_default_client_secret/ ${EXTRACT}" "$1")
 
-		BUILD_STRING_ARGS+=(
-			google_api_key="${api_key}"
-			google_default_client_id="${client_id}"
-			google_default_client_secret="${client_secret}"
-		)
-	else
-		# RE to match the allowed names.
-		local NRE="('google_(api_key|default_client_(id|secret))')"
-		# RE to match whitespace.
-		local WS="[[:space:]]*"
-		# RE to match allowed values.
-		local CRE="('[^\\\\']*')"
-		# And combining them into one RE for describing the lines
-		# we want to allow.
-		local TRE="^${WS}${NRE}${WS}[:=]${WS}${CRE}.*"
-
-		mkdir "${HOME}"/.gyp
-		cat <<-EOF >"${HOME}/.gyp/include.gypi"
-		{
-			'variables': {
-			$(sed -nr -e "/^${TRE}/{s//\1: \4,/;p;}" "$1")
-			}
-		}
-		EOF
-	fi
+	BUILD_STRING_ARGS+=(
+		google_api_key="${api_key}"
+		google_default_client_id="${client_id}"
+		google_default_client_secret="${client_secret}"
+	)
 }
+
 src_prepare() {
 	if [[ "${CHROME_ORIGIN}" != "LOCAL_SOURCE" &&
 			"${CHROME_ORIGIN}" != "SERVER_SOURCE" ]]; then
@@ -713,7 +663,6 @@ src_prepare() {
 		rm -rf "${BUILD_OUT_SYM}" || die "Could not remove symlink"
 		ln -sfT "${CHROME_CACHE_DIR}/src/${BUILD_OUT}" "${BUILD_OUT_SYM}" ||
 			die "Could not create symlink for output directory"
-		export builddir_name="${BUILD_OUT_SYM}"
 	fi
 
 
@@ -723,19 +672,10 @@ src_prepare() {
 	fi
 
 	local WHOAMI=$(whoami)
-	# The hooks may depend on the environment variables we set in this
-	# ebuild (i.e., GYP_DEFINES for gyp_chromium)
-	ECHROME_SET_VER=${ECHROME_SET_VER:=/home/${WHOAMI}/trunk/chromite/bin/chrome_set_ver}
-	einfo "Building Chrome with the following define options:"
-	local opt
-	for opt in "${BUILD_DEFINES[@]}"; do
-		einfo "${opt}"
-	done
-
 	# Get the credentials to fake home directory so that the version of chromium
 	# we build can access Google services. First, check for Chrome credentials.
 	if [[ ! -d google_apis/internal ]]; then
-		# Then look for ChromeOS supplied credentials.
+		# Then look for Chrome OS supplied credentials.
 		local PRIVATE_OVERLAYS_DIR=/home/${WHOAMI}/trunk/src/private-overlays
 		local GAPI_CONFIG_FILE=${PRIVATE_OVERLAYS_DIR}/chromeos-overlay/googleapikeys
 		if [[ ! -f "${GAPI_CONFIG_FILE}" ]]; then
@@ -750,22 +690,14 @@ src_prepare() {
 
 setup_test_lists() {
 	TEST_FILES=(
+		jpeg_decode_accelerator_unittest
 		media_unittests
 		sandbox_linux_unittests
 		video_decode_accelerator_unittest
 		video_encode_accelerator_unittest
 	)
 
-	if use gn; then
-		TEST_FILES+=( ppapi/examples/video_decode )
-	else
-		TEST_FILES+=( ppapi_example_video_decode )
-		# TODO(ihf/stevenjb/kbr): Investigate why these targets fail with GN.
-		# crbug.com/609958
-		if use chrome_internal || use internal_gles_conform; then
-			TEST_FILES+=( gles2_conform_test{,_windowless} )
-		fi
-	fi
+	TEST_FILES+=( ppapi/examples/video_decode )
 
 	# TODO(ihf): Figure out how to keep this in sync with telemetry.
 	TOOLS_TELEMETRY_BIN=(
@@ -794,7 +726,7 @@ setup_compile_flags() {
 
 	# -clang-syntax is a flag that enable us to do clang syntax checking on
 	# top of building Chrome with gcc. Since Chrome itself is clang clean,
-	# there is no need to check it again in ChromeOS land. And this flag has
+	# there is no need to check it again in Chrome OS land. And this flag has
 	# nothing to do with USE=clang.
 	filter-flags -clang-syntax
 
@@ -802,15 +734,17 @@ setup_compile_flags() {
 	# The rest will be exported to the simple chrome workflow.
 	EBUILD_CFLAGS=()
 	EBUILD_CXXFLAGS=()
-	if use afdo_use && ! use clang; then
-		local afdo_flags=(
-			-fauto-profile="${AFDO_PROFILE_LOC}"
-
-			# This is required because gcc emits different warnings
-			# for AFDO vs. non-AFDO. AFDO may inline different
-			# functions from non-AFDO, leading to different warnings.
-			-Wno-error
-		)
+	if use afdo_use; then
+		local afdo_flags=()
+		if use clang; then
+			afdo_flags+=( -fprofile-sample-use="${AFDO_PROFILE_LOC}" )
+		else
+			afdo_flags+=( -fauto-profile="${AFDO_PROFILE_LOC}" )
+		fi
+		# This is required because compiler emits different warnings
+		# for AFDO vs. non-AFDO. AFDO may inline different
+		# functions from non-AFDO, leading to different warnings.
+		afdo_flags+=( -Wno-error )
 		EBUILD_CFLAGS+=( "${afdo_flags[@]}" )
 		EBUILD_CXXFLAGS+=( "${afdo_flags[@]}" )
 	fi
@@ -826,10 +760,10 @@ setup_compile_flags() {
 	# Enable std::vector []-operator bounds checking.
 	append-cxxflags -D__google_stl_debug_vector=1
 
-	# Chrome and ChromeOS versions of the compiler may not be in
+	# Chrome and Chrome OS versions of the compiler may not be in
 	# sync. So, don't complain if Chrome uses a diagnostic
 	# option that is not yet implemented in the compiler version used
-	# by ChromeOS.
+	# by Chrome OS.
 	# Turns out this is only really supported by Clang. See crosbug.com/615466
 	if use clang; then
 		append-flags -Wno-unknown-warning-option
@@ -850,14 +784,14 @@ setup_compile_flags() {
 }
 
 src_configure() {
-	clang-setup-env
-	# Chrome handles sanitizer flags by itself; so the '-fsanitize=*' flag added
-	# by clang-setup-env is not needed. -- crbug.com/425390
-	filter-flags "-fsanitize=*"
 	tc-export CXX CC AR AS RANLIB STRIP
 	export CC_host=$(usex clang "clang" "$(tc-getBUILD_CC)")
 	export CXX_host=$(usex clang "clang++" "$(tc-getBUILD_CXX)")
 	export AR_host=$(tc-getBUILD_AR)
+	if use thinlto; then
+		export RANLIB="llvm-ranlib"
+		export AR="llvm-ar"
+	fi
 	if use gold ; then
 		if [[ "${GOLD_SET}" != "yes" ]]; then
 			export GOLD_SET="yes"
@@ -873,13 +807,12 @@ src_configure() {
 	export LD="${CXX}"
 	export LD_host=$(tc-getBUILD_CXX)
 
+	# Set binutils path for goma.
+	CC_host+=" -B$(get_binutils_path "${LD_host}")"
+	CXX_host+=" -B$(get_binutils_path "${LD_host}")"
+
 	setup_compile_flags
 
-	local build_tool_flags=(
-		"config=${BUILDTYPE}"
-		"output_dir=${builddir_name}"
-	)
-	export GYP_GENERATOR_FLAGS="${build_tool_flags[*]}"
 	export BOTO_CONFIG=/home/$(whoami)/.boto
 	export PATH=${PATH}:/home/$(whoami)/depot_tools
 
@@ -893,7 +826,6 @@ src_configure() {
 		echo "${cmd[@]}"
 		CFLAGS="${CFLAGS} ${EBUILD_CFLAGS[*]}" \
 		CXXFLAGS="${CXXFLAGS} ${EBUILD_CXXFLAGS[*]}" \
-		GYP_CHROMIUM_NO_ACTION=$(use10 gn) \
 		"${cmd[@]}" || die
 	fi
 
@@ -932,16 +864,22 @@ src_configure() {
 		BUILD_ARGS+=("${arg%%=*}=\"${arg#*=}\"")
 	done
 	export GN_ARGS="${BUILD_ARGS[*]}"
-	if use gn; then
-		einfo "GN_ARGS = ${GN_ARGS}"
-		${EGN} gen "${CHROME_ROOT}/src/${BUILD_OUT_SYM}/${BUILDTYPE}" \
-			--args="${GN_ARGS}" --root="${CHROME_ROOT}/src" || die
-	fi
+	einfo "GN_ARGS = ${GN_ARGS}"
+	${EGN} gen "${CHROME_ROOT}/src/${BUILD_OUT_SYM}/${BUILDTYPE}" \
+		--args="${GN_ARGS}" --root="${CHROME_ROOT}/src" || die
 
 	setup_test_lists
 }
 
 chrome_make() {
+	# If goma is enabled, increase the number of parallel run to
+	# 10 * {number of processors}. Though, if it is too large the
+	# performance gets slow down, so limit by 200 heuristically.
+	if use goma; then
+		local num_parallel=$(($(nproc) * 10))
+		local j_limit=200
+		set -- -j $((num_parallel < j_limit ? num_parallel : j_limit)) "$@"
+	fi
 	PATH=${PATH}:/home/$(whoami)/depot_tools ${ENINJA} \
 		${MAKEOPTS} -C "${BUILD_OUT_SYM}/${BUILDTYPE}" $(usex verbose -v "") "$@" || die
 }
@@ -959,11 +897,7 @@ src_compile() {
 		libosmesa.so
 		$(usex mojo "mojo_shell" "")
 	)
-	# Envoy builds set both the envoy and app_shell USE flags; only build the
-	# envoy_shell binary in this case.
-	if use envoy; then
-		chrome_targets+=( envoy_shell )
-	elif use app_shell; then
+	if use app_shell; then
 		chrome_targets+=( app_shell )
 	else
 		chrome_targets+=( chrome )
@@ -1013,12 +947,6 @@ src_compile() {
 
 		autotest_src_compile
 	fi
-}
-
-# Turn off the cp -l behavior in autotest, since the source dir and the
-# installation dir live on different bind mounts right now.
-fast_cp() {
-	cp "$@"
 }
 
 install_test_resources() {
@@ -1203,16 +1131,21 @@ src_install() {
 	else
 		export PORTAGE_STRIP_FLAGS="--strip-debug --keep-file-symbols"
 	fi
-	# TODO(ihf): Remove this once 595763 is fixed.
-	eerror "PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS}"
+	einfo "PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS}"
 	LS=$(ls -alhS ${FROM})
-	eerror "CHROME_DIR after build\n${LS}"
+	einfo "CHROME_DIR after build\n${LS}"
 
+	insinto /etc/dbus-1/system.d
 	# Copy org.chromium.LibCrosService.conf, the D-Bus config file for the
 	# D-Bus service exported by Chrome.
-	insinto /etc/dbus-1/system.d
+	# TODO(teravest): Remove this installation once this file is present
+	# in /opt/google/chrome/dbus.
 	DBUS="${CHROME_ROOT}"/src/chromeos/dbus/services
 	doins "${DBUS}"/org.chromium.LibCrosService.conf
+
+	# Copy a config file that includes other configs that are installed to
+	# /opt/google/chrome/dbus by deploy_chrome.
+	doins "${FILESDIR}"/chrome.conf
 
 	# Copy Quickoffice resources for official build.
 	if use chrome_internal; then
@@ -1256,18 +1189,7 @@ src_install() {
 		# Copy generated cloud_policy.proto. We can't do this in the
 		# protofiles ebuild since this is a generated proto.
 		insinto /usr/share/protofiles
-		# stevenjb: It is unclear why the .proto is in gen/policy/policy
-		# in GYP and gen/policy/ in GN, but once we move away from GYP
-		# that shouldn't matter.
-		# TODO(nya): Remove old paths once they are no longer used.
-		# See: crbug.com/640896
-		if [[ -f "${FROM}"/gen/components/policy/proto/cloud_policy.proto ]]; then
-			doins "${FROM}"/gen/components/policy/proto/cloud_policy.proto
-		elif use gn; then
-			doins "${FROM}"/gen/policy/cloud_policy.proto
-		else
-			doins "${FROM}"/gen/policy/policy/cloud_policy.proto
-		fi
+		doins "${FROM}"/gen/components/policy/proto/cloud_policy.proto
 	fi
 
 	# Fix some perms.
@@ -1309,7 +1231,6 @@ src_install() {
 	cmd+=(
 		--board="${BOARD}"
 		--build-dir="${FROM}"
-		--gyp-defines="${GYP_DEFINES}"
 		--gn-args="${GN_ARGS}"
 		# If this is enabled, we need to re-enable `prepstrip` above for autotests.
 		# You'll also have to re-add "strip" to the RESTRICT at the top of the file.
@@ -1317,19 +1238,17 @@ src_install() {
 		--staging-dir="${D_CHROME_DIR}"
 		--staging-flags="${USE}"
 		--staging-only
-		--strict
 		--strip-bin="${STRIP}"
 		--strip-flags="${PORTAGE_STRIP_FLAGS}"
 		--verbose
 	)
-	# TODO(ihf): Make this einfo again once 595763 is fixed.
-	eerror "${cmd[*]}"
+	einfo "${cmd[*]}"
 	"${cmd[@]}" || die
 	LS=$(ls -alhS ${D}/${CHROME_DIR})
-	eerror "CHROME_DIR after deploy_chrome\n${LS}"
+	einfo "CHROME_DIR after deploy_chrome\n${LS}"
 
 	# Keep the .dwp file.
-	if use chrome_debug && ( use x86 || use arm ); then
+	if use chrome_debug && use debug_fission; then
 		mkdir -p "${D}/usr/lib/debug/${CHROME_DIR}"
 		DWP="${CHOST}"-dwp
 		cd "${D}/${CHROME_DIR}"
@@ -1368,9 +1287,9 @@ pkg_preinst() {
 pkg_postinst() {
 	autotest_pkg_postinst
 	LS=$(ls -alhS ${ROOT}/${CHROME_DIR})
-	eerror "CHROME_DIR after installation\n${LS}"
+	einfo "CHROME_DIR after installation\n${LS}"
 	CHROME_SIZE=$(stat --printf="%s" ${ROOT}/${CHROME_DIR}/chrome)
-	eerror "CHROME_SIZE = ${CHROME_SIZE}"
+	einfo "CHROME_SIZE = ${CHROME_SIZE}"
 	if [[ ${CHROME_SIZE} -ge 200000000 && -z "${KEEP_CHROME_DEBUG_SYMBOLS}" ]]; then
 		die "Installed chrome binary got suspiciously large (size=${CHROME_SIZE})."
 	fi

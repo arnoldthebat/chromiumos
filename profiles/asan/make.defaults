@@ -1,1 +1,1 @@
-USE="clang asan tests_logging_AsanCrash"
+USE="asan tests_logging_AsanCrash"

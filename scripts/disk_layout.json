@@ -25,6 +25,21 @@
         "num": 3,
         "size": "2048 MiB"
       }
+    ],
+    "4gb-rootfs": [
+      {
+        "num": 5,
+        "size": "2 MiB"
+      },
+      {
+        "num": 3,
+        "size": "4096 MiB",
+        "fs_size": "4000 MiB"
+      },
+      {
+        "num": 1,
+        "size": "2432 MiB"
+      }
     ]
   }
 }

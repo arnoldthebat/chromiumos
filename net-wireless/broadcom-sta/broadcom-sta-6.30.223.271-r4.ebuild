@@ -7,20 +7,11 @@ inherit eutils linux-info linux-mod
 
 DESCRIPTION="Broadcom's IEEE 802.11a/b/g/n hybrid Linux device driver"
 HOMEPAGE="https://www.broadcom.com/support/802.11"
-SRC_BASE="http://srv06.arnoldthebat.co.uk/bert/hybrid-v35"
+SRC_BASE="https://docs.broadcom.com/docs-and-downloads/docs/linux_sta/hybrid-v35"
 SRC_URI="x86? ( ${SRC_BASE}-nodebug-pcoem-${PV//\./_}.tar.gz )
-	amd64? ( ${SRC_BASE}_64-nodebug-pcoem-${PV//\./_}.tar.gz )"
-	#http://srv06.arnoldthebat.co.uk/bert/README_${PV}.txt -> README-${P}.txt"
+	amd64? ( ${SRC_BASE}_64-nodebug-pcoem-${PV//\./_}.tar.gz )
+	https://docs.broadcom.com/docs-and-downloads/docs/linux_sta/README_${PV}.txt -> README-${P}.txt"
 
-#SRC_URI="x86? ( ${SRC_BASE}-nodebug-pcoem-${PV//\./_}.tar.gz )
-#	amd64? ( ${SRC_BASE}_64-nodebug-pcoem-${PV//\./_}.tar.gz )
-#	https://docs.broadcom.com/docs-and-downloads/docs/linux_sta/README_${PV}.txt -> README-${P}.txt"
-
-	#http://srv06.arnoldthebat.co.uk/bert/hybrid-v35-nodebug-pcoem-6_30_223_271.tar.gz
-	#http://srv06.arnoldthebat.co.uk/bert/hybrid-v35_64-nodebug-pcoem-6_30_223_271.tar.gz
-	#https://docs.broadcom.com/docs-and-downloads/docs/linux_sta/hybrid-v35_64-nodebug-pcoem-6_30_223_271.tar.gz
-	#https://docs.broadcom.com/docs-and-downloads/docs/linux_sta/hybrid-v35-nodebug-pcoem-6_30_223_271.tar.gz
-	#https://docs.broadcom.com/docs-and-downloads/docs/linux_sta/README_6.30.223.271.txt
 
 
 LICENSE="Broadcom"
@@ -77,7 +68,9 @@ src_prepare() {
 		"${FILESDIR}/${PN}-6.30.223.248-r3-Wno-date-time.patch" \
 		"${FILESDIR}/${PN}-6.30.223.271-r1-linux-3.18.patch" \
 		"${FILESDIR}/${PN}-6.30.223.271-r2-linux-4.3-v2.patch" \
-		"${FILESDIR}/${PN}-6.30.223.271-r4-linux-4.8.patch"
+
+		"${FILESDIR}/${PN}-6.30.223.271-r4-linux-4.8.patch" \
+
 
 	epatch_user
 }
