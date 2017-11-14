@@ -39,8 +39,8 @@ src_install() {
 	linux-mod_src_compile
 	ewarn "**** Adding Files to Firmware *****"
 	insinto /lib/firmware/rtlwifi/
-	doins ${WORKDIR}/rtl8723bs/rtl8723bs_nic.bin
-	doins ${WORKDIR}/rtl8723bs/rtl8723bs_wowlan.bin
+	doins ${WORKDIR}/rtl8723bs-0.1/rtl8723bs_nic.bin
+	doins ${WORKDIR}/rtl8723bs-0.1/rtl8723bs_wowlan.bin
 	linux-mod_src_install
 }
 

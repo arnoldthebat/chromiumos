@@ -1,1 +1,0 @@
-KERNEL=="renderD*", SUBSYSTEM=="drm", DRIVERS=="vgem", SYMLINK+="dri/vgem"

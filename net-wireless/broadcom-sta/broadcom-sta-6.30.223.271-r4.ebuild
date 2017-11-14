@@ -1,4 +1,4 @@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -11,8 +11,6 @@ SRC_BASE="https://docs.broadcom.com/docs-and-downloads/docs/linux_sta/hybrid-v35
 SRC_URI="x86? ( ${SRC_BASE}-nodebug-pcoem-${PV//\./_}.tar.gz )
 	amd64? ( ${SRC_BASE}_64-nodebug-pcoem-${PV//\./_}.tar.gz )
 	https://docs.broadcom.com/docs-and-downloads/docs/linux_sta/README_${PV}.txt -> README-${P}.txt"
-
-
 
 LICENSE="Broadcom"
 KEYWORDS="-* amd64 x86"
@@ -56,7 +54,7 @@ pkg_setup() {
 	linux-mod_pkg_setup
 
 	#BUILD_PARAMS="-C ${KV_DIR} M=${S}"
-	BUILD_PARAMS="-C /home/tonyd/trunk/chroot/build/${BOARD}/var/cache/portage/sys-kernel/chromeos-kernel-4_4 M=${S}"
+	BUILD_PARAMS="-C /mnt/host/source/chroot/build/${BOARD}/var/cache/portage/sys-kernel/chromeos-kernel-4_4 M=${S}"
 	BUILD_TARGETS="wl.ko"
 }
 
@@ -68,9 +66,7 @@ src_prepare() {
 		"${FILESDIR}/${PN}-6.30.223.248-r3-Wno-date-time.patch" \
 		"${FILESDIR}/${PN}-6.30.223.271-r1-linux-3.18.patch" \
 		"${FILESDIR}/${PN}-6.30.223.271-r2-linux-4.3-v2.patch" \
-
-		"${FILESDIR}/${PN}-6.30.223.271-r4-linux-4.8.patch" \
-
+		"${FILESDIR}/${PN}-6.30.223.271-r4-linux-4.8.patch"
 
 	epatch_user
 }
@@ -78,5 +74,5 @@ src_prepare() {
 src_install() {
 	linux-mod_src_install
 
-	#dodoc "${DISTDIR}/README-${P}.txt"
+	dodoc "${DISTDIR}/README-${P}.txt"
 }

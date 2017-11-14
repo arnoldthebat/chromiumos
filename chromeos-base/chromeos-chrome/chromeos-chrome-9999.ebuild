@@ -78,6 +78,10 @@ IUSE_OZONE_PLATFORM_DEFAULTS="${OZONE_PLATFORMS[@]/#/${OZONE_PLATFORM_DEFAULT_PR
 IUSE+=" ${IUSE_OZONE_PLATFORM_DEFAULTS}"
 REQUIRED_USE+=" ^^ ( ${IUSE_OZONE_PLATFORM_DEFAULTS} )"
 
+# The gclient hooks that run in src_prepare hit the network.
+# https://crbug.com/731905
+RESTRICT="network-sandbox mirror"
+
 # Do not strip the nacl_helper_bootstrap binary because the binutils
 # objcopy/strip mangles the ELF program headers.
 # TODO(mcgrathr,vapier): This should be removed after portage's prepstrip
@@ -140,9 +144,9 @@ AFDO_FILE["amd64"]="chromeos-chrome-amd64-60.0.3077.0_rc-r1.afdo"
 AFDO_FILE["x86"]="chromeos-chrome-amd64-60.0.3077.0_rc-r1.afdo"
 AFDO_FILE["arm"]="chromeos-chrome-amd64-60.0.3077.0_rc-r1.afdo"
 
-AFDO_FILE_LLVM["amd64"]="chromeos-chrome-amd64-60.0.3112.90_rc-r1.afdo"
-AFDO_FILE_LLVM["x86"]="chromeos-chrome-amd64-60.0.3112.90_rc-r1.afdo"
-AFDO_FILE_LLVM["arm"]="chromeos-chrome-amd64-60.0.3112.90_rc-r1.afdo"
+AFDO_FILE_LLVM["amd64"]="chromeos-chrome-amd64-62.0.3202.89_rc-r1.afdo"
+AFDO_FILE_LLVM["x86"]="chromeos-chrome-amd64-62.0.3202.89_rc-r1.afdo"
+AFDO_FILE_LLVM["arm"]="chromeos-chrome-amd64-62.0.3202.89_rc-r1.afdo"
 
 # This dictionary can be used to manually override the setting for the
 # AFDO profile file. Any non-empty values in this array will take precedence
@@ -180,8 +184,6 @@ add_afdo_files() {
 
 add_afdo_files
 
-RESTRICT="mirror"
-
 RDEPEND="${RDEPEND}
 	app-arch/bzip2
 	app-crypt/mit-krb5
@@ -194,6 +196,7 @@ RDEPEND="${RDEPEND}
 	media-libs/fontconfig
 	media-libs/freetype
 	media-libs/harfbuzz
+	media-libs/libsync
 	x11-libs/libdrm
 	ozone_platform_gbm? ( media-libs/minigbm )
 	media-libs/libpng
@@ -259,12 +262,23 @@ echox() {
 }
 echotf() { echox ${1:-$?} true false ; }
 usetf()  { usex $1 true false ; }
+
+use_goma() {
+	[[ "${USE_GOMA:-$(usetf goma)}" == "true" ]]
+}
+use_goma_log() {
+	use_goma && \
+	[[ -n "${GOMA_TMP_DIR}" && -n "${GLOG_log_dir}" && \
+		"${GLOG_log_dir}" == "${GOMA_TMP_DIR}"* ]]
+}
+
 set_build_args() {
 	BUILD_ARGS=(
 		is_debug=false
 		"${EXTRA_GN_ARGS}"
 		use_v4l2_codec=$(usetf v4l2_codec)
 		use_v4lplugin=$(usetf v4lplugin)
+		use_vaapi=$(usetf vaapi)
 		use_ozone=true
 		use_evdev_gestures=$(usetf evdev_gestures)
 		use_xkbcommon=$(usetf xkbcommon)
@@ -278,6 +292,7 @@ set_build_args() {
 		# use_system_minigbm is set below.
 		use_system_harfbuzz=true
 		use_system_freetype=true
+		use_system_libsync=true
 		use_cups=$(usetf cups)
 
 		# Clang features.
@@ -286,6 +301,7 @@ set_build_args() {
 		cros_host_is_clang=$(usetf clang)
 		clang_use_chrome_plugins=false
 		use_thin_lto=$(usetf thinlto)
+		allow_posix_link_time_opt=$(usetf thinlto)
 	)
 	# BUILD_STRING_ARGS needs appropriate quoting. So, we keep them separate and
 	# add them to BUILD_ARGS at the end.
@@ -409,7 +425,7 @@ set_build_args() {
 	if use component_build; then
 		BUILD_ARGS+=( is_component_build=true )
 	fi
-	if use goma; then
+	if use_goma; then
 		BUILD_ARGS+=( use_goma=true )
 		BUILD_STRING_ARGS+=( goma_dir="${GOMA_DIR:-/home/${WHOAMI}/goma}" )
 
@@ -749,6 +765,10 @@ setup_compile_flags() {
 		EBUILD_CXXFLAGS+=( "${afdo_flags[@]}" )
 	fi
 
+	# LLVM needs this when parsing profiles.
+	# See README on https://github.com/google/autofdo
+	use clang && append-flags -fdebug-info-for-profiling
+
 	# The .dwp file for x86 and arm exceeds 4GB limit. Adding this flag as a
 	# workaround. The generated symbol files are the same with/without this
 	# flag. See https://crbug.com/641188
@@ -771,9 +791,6 @@ setup_compile_flags() {
 		export CFLAGS_host+=" -Wno-unknown-warning-option"
 	fi
 
-	# crbug.com/532532
-	filter-flags "-Wl,--fix-cortex-a53-843419"
-
 	use vtable_verify && append-ldflags -fvtable-verify=preinit
 
 	local flags
@@ -785,8 +802,8 @@ setup_compile_flags() {
 
 src_configure() {
 	tc-export CXX CC AR AS RANLIB STRIP
-	export CC_host=$(usex clang "clang" "$(tc-getBUILD_CC)")
-	export CXX_host=$(usex clang "clang++" "$(tc-getBUILD_CXX)")
+	export CC_host=$(usex clang "${CBUILD}-clang" "$(tc-getBUILD_CC)")
+	export CXX_host=$(usex clang "${CBUILD}-clang++" "$(tc-getBUILD_CXX)")
 	export AR_host=$(tc-getBUILD_AR)
 	if use thinlto; then
 		export RANLIB="llvm-ranlib"
@@ -805,7 +822,16 @@ src_configure() {
 
 	# Use g++ as the linker driver.
 	export LD="${CXX}"
-	export LD_host=$(tc-getBUILD_CXX)
+	export LD_host=${CXX_host}
+
+	# USE=thinlto affects host build, we need to make changes below
+	# to make sure host package builds with thinlto.
+	# crosbug.com/731335
+	if use thinlto; then
+		export AR_host="llvm-ar"
+		export LD_host="${CXX_host}"
+		LD_host+=" -B$(get_binutils_path "${LD_host}")"
+	fi
 
 	# Set binutils path for goma.
 	CC_host+=" -B$(get_binutils_path "${LD_host}")"
@@ -875,13 +901,37 @@ chrome_make() {
 	# If goma is enabled, increase the number of parallel run to
 	# 10 * {number of processors}. Though, if it is too large the
 	# performance gets slow down, so limit by 200 heuristically.
-	if use goma; then
+	if use_goma; then
 		local num_parallel=$(($(nproc) * 10))
 		local j_limit=200
+		# If AFDO is used, each compile gets heavier, so goma server
+		# can be overloaded. So, set lower limit. (crbug.com/733489)
+		if use afdo_use; then
+			j_limit=60
+		fi
 		set -- -j $((num_parallel < j_limit ? num_parallel : j_limit)) "$@"
 	fi
-	PATH=${PATH}:/home/$(whoami)/depot_tools ${ENINJA} \
-		${MAKEOPTS} -C "${BUILD_OUT_SYM}/${BUILDTYPE}" $(usex verbose -v "") "$@" || die
+	local command=(
+		${ENINJA}
+		${MAKEOPTS}
+		-C "${BUILD_OUT_SYM}/${BUILDTYPE}"
+		$(usex verbose -v "")
+		"$@"
+	)
+	# If goma is used, log the command, cwd and env vars, which will be
+	# uploaded to the logging server.
+	if use_goma_log; then
+		env --null > "${GLOG_log_dir}/ninja_env"
+		pwd > "${GLOG_log_dir}/ninja_cwd"
+		echo "${command[@]}" > "${GLOG_log_dir}/ninja_command"
+	fi
+	PATH=${PATH}:/home/$(whoami)/depot_tools "${command[@]}"
+	local ret=$?
+	if use_goma_log; then
+		echo "${ret}" > "${GLOG_log_dir}/ninja_exit"
+		cp -p "${BUILD_OUT_SYM}/${BUILDTYPE}/.ninja_log" "${GLOG_log_dir}/ninja_log"
+	fi
+	[[ "${ret}" -eq 0 ]] || die
 }
 
 src_compile() {
