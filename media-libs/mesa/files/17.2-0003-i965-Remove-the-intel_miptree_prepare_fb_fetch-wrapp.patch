@@ -1,0 +1,87 @@
+From 642f733c2c20f5063998b5a62a14b76a8a43e56b Mon Sep 17 00:00:00 2001
+From: Kenneth Graunke <kenneth@whitecape.org>
+Date: Thu, 12 Oct 2017 22:24:18 -0700
+Subject: [PATCH 3/4] i965: Remove the intel_miptree_prepare_fb_fetch wrapper.
+
+Now that intel_miptree_prepare_texture takes levels and layers, there's
+not much use in this anymore.
+
+Reviewed-by: Topi Pohjolainen <topi.pohjolainen@intel.com>
+Reviewed-by; Jason Ekstrand <jason@jlekstrand.net>
+---
+ src/mesa/drivers/dri/i965/brw_draw.c          | 11 +++++++++--
+ src/mesa/drivers/dri/i965/intel_mipmap_tree.c | 14 --------------
+ src/mesa/drivers/dri/i965/intel_mipmap_tree.h |  5 +----
+ 3 files changed, 10 insertions(+), 20 deletions(-)
+
+diff --git a/src/mesa/drivers/dri/i965/brw_draw.c b/src/mesa/drivers/dri/i965/brw_draw.c
+index 81131bc585..9ad0ec07b6 100644
+--- a/src/mesa/drivers/dri/i965/brw_draw.c
++++ b/src/mesa/drivers/dri/i965/brw_draw.c
+@@ -473,13 +473,20 @@ brw_predraw_resolve_framebuffer(struct brw_context *brw)
+        ctx->FragmentProgram._Current->info.outputs_read) {
+       const struct gl_framebuffer *fb = ctx->DrawBuffer;
+ 
++      /* This is only used for non-coherent framebuffer fetch, so we don't
++       * need to worry about CCS_E and can simply pass 'false' below.
++       */
++      assert(brw->screen->devinfo.gen < 9);
++
+       for (unsigned i = 0; i < fb->_NumColorDrawBuffers; i++) {
+          const struct intel_renderbuffer *irb =
+             intel_renderbuffer(fb->_ColorDrawBuffers[i]);
+ 
+          if (irb) {
+-            intel_miptree_prepare_fb_fetch(brw, irb->mt, irb->mt_level,
+-                                           irb->mt_layer, irb->layer_count);
++            intel_miptree_prepare_texture(brw, irb->mt, irb->mt->surf.format,
++                                          irb->mt_level, 1,
++                                          irb->mt_layer, irb->layer_count,
++                                          false);
+          }
+       }
+    }
+diff --git a/src/mesa/drivers/dri/i965/intel_mipmap_tree.c b/src/mesa/drivers/dri/i965/intel_mipmap_tree.c
+index 4bbfab71b2..5c23c0ee1d 100644
+--- a/src/mesa/drivers/dri/i965/intel_mipmap_tree.c
++++ b/src/mesa/drivers/dri/i965/intel_mipmap_tree.c
+@@ -2658,20 +2658,6 @@ intel_miptree_prepare_image(struct brw_context *brw,
+                                 ISL_AUX_USAGE_NONE, false);
+ }
+ 
+-void
+-intel_miptree_prepare_fb_fetch(struct brw_context *brw,
+-                               struct intel_mipmap_tree *mt, uint32_t level,
+-                               uint32_t start_layer, uint32_t num_layers)
+-{
+-   /* This is only used for non-coherent framebuffer fetch, so we don't
+-    * need to worry about CCS_E and can simply pass 'false' below.
+-    */
+-   assert(brw->screen->devinfo.gen < 9);
+-
+-   intel_miptree_prepare_texture(brw, mt, mt->surf.format, level, 1,
+-                                 start_layer, num_layers, false);
+-}
+-
+ enum isl_aux_usage
+ intel_miptree_render_aux_usage(struct brw_context *brw,
+                                struct intel_mipmap_tree *mt,
+diff --git a/src/mesa/drivers/dri/i965/intel_mipmap_tree.h b/src/mesa/drivers/dri/i965/intel_mipmap_tree.h
+index f695af186e..974fd71046 100644
+--- a/src/mesa/drivers/dri/i965/intel_mipmap_tree.h
++++ b/src/mesa/drivers/dri/i965/intel_mipmap_tree.h
+@@ -646,10 +646,7 @@ intel_miptree_prepare_texture(struct brw_context *brw,
+ void
+ intel_miptree_prepare_image(struct brw_context *brw,
+                             struct intel_mipmap_tree *mt);
+-void
+-intel_miptree_prepare_fb_fetch(struct brw_context *brw,
+-                               struct intel_mipmap_tree *mt, uint32_t level,
+-                               uint32_t start_layer, uint32_t num_layers);
++
+ enum isl_aux_usage
+ intel_miptree_render_aux_usage(struct brw_context *brw,
+                                struct intel_mipmap_tree *mt,
+-- 
+2.13.5
+
