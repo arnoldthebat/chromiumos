@@ -1,0 +1,105 @@
+From c8dab9b9d15165ee4de3dd2b62da96c959f18ddd Mon Sep 17 00:00:00 2001
+From: Kenneth Graunke <kenneth@whitecape.org>
+Date: Thu, 12 Oct 2017 20:59:22 -0700
+Subject: [PATCH 1/4] i965: Make intel_miptree_prepare_texture() take
+ level/layer arguments.
+
+This effectively exports intel_miptree_prepare_texture_slices() as
+intel_miptree_prepare_texture().  The hope is to avoid resolves for
+when using texture views that access a subset of the levels/layers.
+
+For now, we pass the same arguments to separate the mechanical change
+from the one that actually modifies our behavior.
+
+Reviewed-by: Topi Pohjolainen <topi.pohjolainen@intel.com>
+Reviewed-by; Jason Ekstrand <jason@jlekstrand.net>
+---
+ src/mesa/drivers/dri/i965/brw_draw.c          |  2 ++
+ src/mesa/drivers/dri/i965/intel_mipmap_tree.c | 30 ++++++++-------------------
+ src/mesa/drivers/dri/i965/intel_mipmap_tree.h |  2 ++
+ 3 files changed, 13 insertions(+), 21 deletions(-)
+
+diff --git a/src/mesa/drivers/dri/i965/brw_draw.c b/src/mesa/drivers/dri/i965/brw_draw.c
+index 0364d442f2..2e7896a6f7 100644
+--- a/src/mesa/drivers/dri/i965/brw_draw.c
++++ b/src/mesa/drivers/dri/i965/brw_draw.c
+@@ -403,6 +403,8 @@ brw_predraw_resolve_inputs(struct brw_context *brw)
+          intel_disable_rb_aux_buffer(brw, tex_obj->mt, "for sampling");
+ 
+       intel_miptree_prepare_texture(brw, tex_obj->mt, view_format,
++                                    0, INTEL_REMAINING_LEVELS,
++                                    0, INTEL_REMAINING_LAYERS,
+                                     disable_aux);
+ 
+       brw_render_cache_set_check_flush(brw, tex_obj->mt->bo);
+diff --git a/src/mesa/drivers/dri/i965/intel_mipmap_tree.c b/src/mesa/drivers/dri/i965/intel_mipmap_tree.c
+index 95bc48e652..4bbfab71b2 100644
+--- a/src/mesa/drivers/dri/i965/intel_mipmap_tree.c
++++ b/src/mesa/drivers/dri/i965/intel_mipmap_tree.c
+@@ -2624,13 +2624,13 @@ isl_formats_are_fast_clear_compatible(enum isl_format a, enum isl_format b)
+    return isl_format_srgb_to_linear(a) == isl_format_srgb_to_linear(b);
+ }
+ 
+-static void
+-intel_miptree_prepare_texture_slices(struct brw_context *brw,
+-                                     struct intel_mipmap_tree *mt,
+-                                     enum isl_format view_format,
+-                                     uint32_t start_level, uint32_t num_levels,
+-                                     uint32_t start_layer, uint32_t num_layers,
+-                                     bool disable_aux)
++void
++intel_miptree_prepare_texture(struct brw_context *brw,
++                              struct intel_mipmap_tree *mt,
++                              enum isl_format view_format,
++                              uint32_t start_level, uint32_t num_levels,
++                              uint32_t start_layer, uint32_t num_layers,
++                              bool disable_aux)
+ {
+    enum isl_aux_usage aux_usage = disable_aux ? ISL_AUX_USAGE_NONE :
+       intel_miptree_texture_aux_usage(brw, mt, view_format);
+@@ -2649,18 +2649,6 @@ intel_miptree_prepare_texture_slices(struct brw_context *brw,
+ }
+ 
+ void
+-intel_miptree_prepare_texture(struct brw_context *brw,
+-                              struct intel_mipmap_tree *mt,
+-                              enum isl_format view_format,
+-                              bool disable_aux)
+-{
+-   intel_miptree_prepare_texture_slices(brw, mt, view_format,
+-                                        0, INTEL_REMAINING_LEVELS,
+-                                        0, INTEL_REMAINING_LAYERS,
+-                                        disable_aux);
+-}
+-
+-void
+ intel_miptree_prepare_image(struct brw_context *brw,
+                             struct intel_mipmap_tree *mt)
+ {
+@@ -2680,8 +2668,8 @@ intel_miptree_prepare_fb_fetch(struct brw_context *brw,
+     */
+    assert(brw->screen->devinfo.gen < 9);
+ 
+-   intel_miptree_prepare_texture_slices(brw, mt, mt->surf.format, level, 1,
+-                                        start_layer, num_layers, false);
++   intel_miptree_prepare_texture(brw, mt, mt->surf.format, level, 1,
++                                 start_layer, num_layers, false);
+ }
+ 
+ enum isl_aux_usage
+diff --git a/src/mesa/drivers/dri/i965/intel_mipmap_tree.h b/src/mesa/drivers/dri/i965/intel_mipmap_tree.h
+index 5ab929bb40..f695af186e 100644
+--- a/src/mesa/drivers/dri/i965/intel_mipmap_tree.h
++++ b/src/mesa/drivers/dri/i965/intel_mipmap_tree.h
+@@ -640,6 +640,8 @@ void
+ intel_miptree_prepare_texture(struct brw_context *brw,
+                               struct intel_mipmap_tree *mt,
+                               enum isl_format view_format,
++                              uint32_t start_level, uint32_t num_levels,
++                              uint32_t start_layer, uint32_t num_layers,
+                               bool disable_aux);
+ void
+ intel_miptree_prepare_image(struct brw_context *brw,
+-- 
+2.13.5
+

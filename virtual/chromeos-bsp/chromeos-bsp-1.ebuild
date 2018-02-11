@@ -22,7 +22,6 @@ RDEPEND="
 	media-libs/x264
 	net-wireless/broadcom-sta
 	net-wireless/rfkill
-	net-wireless/rtl8723bs
 	www-plugins/chrome-binary-plugins
 "
 DEPEND="${RDEPEND}"

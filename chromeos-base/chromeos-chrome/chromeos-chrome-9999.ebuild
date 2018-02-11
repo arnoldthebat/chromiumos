@@ -14,7 +14,7 @@
 # gclient is expected to be in ~/depot_tools if EGCLIENT is not set
 # to gclient path.
 
-EAPI="4"
+EAPI="5"
 inherit autotest-deponly binutils-funcs cros-constants eutils flag-o-matic git-2 multilib toolchain-funcs
 
 DESCRIPTION="Open-source version of Google Chrome web browser"
@@ -28,6 +28,8 @@ fi
 SLOT="0"
 KEYWORDS="*"
 IUSE="
+	afdo_chrome_exp1
+	afdo_chrome_exp2
 	afdo_use
 	+accessibility
 	app_shell
@@ -50,12 +52,15 @@ IUSE="
 	hardfp
 	+highdpi
 	internal_gles_conform
+	+libcxx
+	lld
 	mojo
 	+nacl
 	neon
 	opengl
 	opengles
 	+runhooks
+	smbprovider
 	thinlto
 	+v4l2_codec
 	v4lplugin
@@ -66,7 +71,12 @@ IUSE="
 	"
 REQUIRED_USE="
 	asan? ( clang )
-	thinlto? ( clang gold )
+	?? ( gold lld )
+	libcxx? ( clang )
+	thinlto? ( clang || ( gold lld ) )
+	afdo_use? ( clang )
+	afdo_chrome_exp1? ( afdo_use )
+	afdo_chrome_exp2? ( afdo_use )
 	"
 
 OZONE_PLATFORM_PREFIX=ozone_platform_
@@ -128,25 +138,32 @@ BUILD_OUT="${BUILD_OUT:-out_${BOARD}}"
 BUILD_OUT_SYM="c"
 
 AFDO_BZ_SUFFIX=".bz2"
-AFDO_GCOV_SUFFIX=".gcov"
 AFDO_PROF_SUFFIX=".prof"
-AFDO_LOCATION=${AFDO_GS_DIRECTORY:-"gs://chromeos-prebuilt/afdo-job/canonicals/"}
+AFDO_EXP1_SUFFIX=".exp1"
+AFDO_EXP2_SUFFIX=".exp2"
 AFDO_LOCATION_LLVM=${AFDO_GS_DIRECTORY:-"gs://chromeos-prebuilt/afdo-job/llvm/"}
+AFDO_LOCATION_EXP1=${AFDO_GS_DIRECTORY:-"gs://chromeos-localmirror/distfiles/afdo/experimental/cwp/"}
+AFDO_LOCATION_EXP2=${AFDO_GS_DIRECTORY:-"gs://chromeos-localmirror/distfiles/afdo/experimental/approximation/"}
 
 # These dictionaries contain one entry per architecture. The value for each
 # entry is the appropriate AFDO profile for the current version of Chrome.
-declare -A AFDO_FILE
 declare -A AFDO_FILE_LLVM
+declare -A AFDO_FILE_EXP1
+declare -A AFDO_FILE_EXP2
 
 # The following entries into the AFDO_FILE* dictionaries are set automatically
 # by the PFQ builder. Don't change the format of the lines or modify by hand.
-AFDO_FILE["amd64"]="chromeos-chrome-amd64-60.0.3077.0_rc-r1.afdo"
-AFDO_FILE["x86"]="chromeos-chrome-amd64-60.0.3077.0_rc-r1.afdo"
-AFDO_FILE["arm"]="chromeos-chrome-amd64-60.0.3077.0_rc-r1.afdo"
+AFDO_FILE_LLVM["amd64"]="chromeos-chrome-amd64-64.0.3282.148_rc-r1.afdo"
+AFDO_FILE_LLVM["x86"]="chromeos-chrome-amd64-64.0.3282.148_rc-r1.afdo"
+AFDO_FILE_LLVM["arm"]="chromeos-chrome-amd64-64.0.3282.148_rc-r1.afdo"
 
-AFDO_FILE_LLVM["amd64"]="chromeos-chrome-amd64-62.0.3202.89_rc-r1.afdo"
-AFDO_FILE_LLVM["x86"]="chromeos-chrome-amd64-62.0.3202.89_rc-r1.afdo"
-AFDO_FILE_LLVM["arm"]="chromeos-chrome-amd64-62.0.3202.89_rc-r1.afdo"
+AFDO_FILE_EXP1["amd64"]="chromeos-chrome-amd64-64.0.3282.41_rc-r1.afdo"
+AFDO_FILE_EXP1["x86"]="chromeos-chrome-amd64-64.0.3282.41_rc-r1.afdo"
+AFDO_FILE_EXP1["arm"]="chromeos-chrome-amd64-64.0.3282.41_rc-r1.afdo"
+
+AFDO_FILE_EXP2["amd64"]="chromeos-chrome-amd64-64.0.3245.0_rc-r1.afdo"
+AFDO_FILE_EXP2["x86"]="chromeos-chrome-amd64-64.0.3245.0_rc-r1.afdo"
+AFDO_FILE_EXP2["arm"]="chromeos-chrome-amd64-64.0.3245.0_rc-r1.afdo"
 
 # This dictionary can be used to manually override the setting for the
 # AFDO profile file. Any non-empty values in this array will take precedence
@@ -161,23 +178,28 @@ AFDO_FROZEN_FILE["arm"]=""
 
 add_afdo_files() {
 	local a f
-	for a in "${!AFDO_FILE[@]}" ; do
-		f=${AFDO_FILE[${a}]}
-		if [[ -n ${f} ]]; then
-			SRC_URI+=" afdo_use? ( ${a}? ( !clang? ( ${AFDO_LOCATION}${f}${AFDO_BZ_SUFFIX} -> ${f}${AFDO_GCOV_SUFFIX}${AFDO_BZ_SUFFIX} ) ) )"
-		fi
-	done
 	for a in "${!AFDO_FILE_LLVM[@]}" ; do
 		f=${AFDO_FILE_LLVM[${a}]}
 		if [[ -n ${f} ]]; then
-			SRC_URI+=" afdo_use? ( ${a}? ( clang? ( ${AFDO_LOCATION_LLVM}${f}${AFDO_BZ_SUFFIX} -> ${f}${AFDO_PROF_SUFFIX}${AFDO_BZ_SUFFIX} ) ) )"
+			SRC_URI+=" afdo_use? ( ${a}? ( ${AFDO_LOCATION_LLVM}${f}${AFDO_BZ_SUFFIX} -> ${f}${AFDO_PROF_SUFFIX}${AFDO_BZ_SUFFIX} ) )"
+		fi
+	done
+	for a in "${!AFDO_FILE_EXP1[@]}" ; do
+		f=${AFDO_FILE_EXP1[${a}]}
+		if [[ -n ${f} ]]; then
+			SRC_URI+=" afdo_chrome_exp1? ( ${a}? ( ${AFDO_LOCATION_EXP1}${f}${AFDO_BZ_SUFFIX} -> ${f}${AFDO_EXP1_SUFFIX}${AFDO_BZ_SUFFIX} ) )"
+		fi
+	done
+	for a in "${!AFDO_FILE_EXP2[@]}" ; do
+		f=${AFDO_FILE_EXP2[${a}]}
+		if [[ -n ${f} ]]; then
+			SRC_URI+=" afdo_chrome_exp2? ( ${a}? ( ${AFDO_LOCATION_EXP2}${f}${AFDO_BZ_SUFFIX} -> ${f}${AFDO_EXP2_SUFFIX}${AFDO_BZ_SUFFIX} ) )"
 		fi
 	done
 	for a in "${!AFDO_FROZEN_FILE[@]}" ; do
 		f=${AFDO_FROZEN_FILE[${a}]}
 		if [[ -n ${f} ]]; then
-			SRC_URI+=" afdo_use? ( ${a}? ( !clang? ( ${AFDO_LOCATION}${f}${AFDO_BZ_SUFFIX} -> ${f}${AFDO_GCOV_SUFFIX}${AFDO_BZ_SUFFIX} ) ) )"
-			SRC_URI+=" afdo_use? ( ${a}? ( clang? ( ${AFDO_LOCATION_LLVM}${f}${AFDO_BZ_SUFFIX} -> ${f}${AFDO_PROF_SUFFIX}${AFDO_BZ_SUFFIX} ) ) )"
+			SRC_URI+=" afdo_use? ( ${a}? ( ${AFDO_LOCATION_LLVM}${f}${AFDO_BZ_SUFFIX} -> ${f}${AFDO_PROF_SUFFIX}${AFDO_BZ_SUFFIX} ) )"
 		fi
 	done
 }
@@ -202,7 +224,6 @@ RDEPEND="${RDEPEND}
 	media-libs/libpng
 	v4lplugin? ( media-libs/libv4lplugins )
 	>=media-sound/adhd-0.0.1-r310
-	net-misc/wget
 	cups? ( net-print/cups )
 	opengl? ( virtual/opengl )
 	opengles? ( virtual/opengles )
@@ -222,6 +243,11 @@ RDEPEND="${RDEPEND}
 		chromeos-base/libevdev
 	)
 	accessibility? ( app-accessibility/brltty )
+	libcxx? (
+		sys-libs/libcxxabi
+		sys-libs/libcxx
+	)
+	smbprovider? ( chromeos-base/smbprovider )
 	"
 
 DEPEND="${DEPEND}
@@ -301,7 +327,7 @@ set_build_args() {
 		cros_host_is_clang=$(usetf clang)
 		clang_use_chrome_plugins=false
 		use_thin_lto=$(usetf thinlto)
-		allow_posix_link_time_opt=$(usetf thinlto)
+		use_lld=$(usetf lld)
 	)
 	# BUILD_STRING_ARGS needs appropriate quoting. So, we keep them separate and
 	# add them to BUILD_ARGS at the end.
@@ -626,12 +652,19 @@ src_unpack() {
 		# Otherwise use the current one.
 
 		local PROFILE_STATE="CURRENT"
-		local PROFILE_FILE=${AFDO_FILE[${ARCH}]}
-		local PROFILE_SUFFIX=${AFDO_GCOV_SUFFIX}
+		local PROFILE_FILE=${AFDO_FILE_LLVM[${ARCH}]}
+		local PROFILE_SUFFIX=${AFDO_PROF_SUFFIX}
 
-		if use clang; then
-			PROFILE_FILE=${AFDO_FILE_LLVM[${ARCH}]}
-			PROFILE_SUFFIX=${AFDO_PROF_SUFFIX}
+		if use afdo_chrome_exp1; then
+			PROFILE_STATE="EXPERIMENT 1"
+			PROFILE_FILE=${AFDO_FILE_EXP1[${ARCH}]}
+			PROFILE_SUFFIX=${AFDO_EXP1_SUFFIX}
+		fi
+
+		if use afdo_chrome_exp2; then
+			PROFILE_STATE="EXPERIMENT 2"
+			PROFILE_FILE=${AFDO_FILE_EXP2[${ARCH}]}
+			PROFILE_SUFFIX=${AFDO_EXP2_SUFFIX}
 		fi
 
 		if [[ -n ${AFDO_FROZEN_FILE[${ARCH}]} ]]; then
@@ -752,11 +785,7 @@ setup_compile_flags() {
 	EBUILD_CXXFLAGS=()
 	if use afdo_use; then
 		local afdo_flags=()
-		if use clang; then
-			afdo_flags+=( -fprofile-sample-use="${AFDO_PROFILE_LOC}" )
-		else
-			afdo_flags+=( -fauto-profile="${AFDO_PROFILE_LOC}" )
-		fi
+		afdo_flags+=( -fprofile-sample-use="${AFDO_PROFILE_LOC}" )
 		# This is required because compiler emits different warnings
 		# for AFDO vs. non-AFDO. AFDO may inline different
 		# functions from non-AFDO, leading to different warnings.
@@ -789,6 +818,10 @@ setup_compile_flags() {
 		append-flags -Wno-unknown-warning-option
 		export CXXFLAGS_host+=" -Wno-unknown-warning-option"
 		export CFLAGS_host+=" -Wno-unknown-warning-option"
+		if use libcxx; then
+			append-cxxflags "-stdlib=libc++"
+			append-ldflags "-stdlib=libc++"
+		fi
 	fi
 
 	use vtable_verify && append-ldflags -fvtable-verify=preinit
@@ -804,11 +837,7 @@ src_configure() {
 	tc-export CXX CC AR AS RANLIB STRIP
 	export CC_host=$(usex clang "${CBUILD}-clang" "$(tc-getBUILD_CC)")
 	export CXX_host=$(usex clang "${CBUILD}-clang++" "$(tc-getBUILD_CXX)")
-	export AR_host=$(tc-getBUILD_AR)
-	if use thinlto; then
-		export RANLIB="llvm-ranlib"
-		export AR="llvm-ar"
-	fi
+
 	if use gold ; then
 		if [[ "${GOLD_SET}" != "yes" ]]; then
 			export GOLD_SET="yes"
@@ -816,21 +845,42 @@ src_configure() {
 			export CC="${CC} -B$(get_binutils_path_gold)"
 			export CXX="${CXX} -B$(get_binutils_path_gold)"
 		fi
+	elif use lld ; then
+		export CC="${CC} -fuse-ld=lld"
+		export CXX="${CXX} -fuse-ld=lld"
 	else
-		ewarn "gold disabled. Using GNU ld."
+		ewarn "gold and lld disabled. Using GNU ld."
 	fi
 
 	# Use g++ as the linker driver.
 	export LD="${CXX}"
 	export LD_host=${CXX_host}
 
-	# USE=thinlto affects host build, we need to make changes below
-	# to make sure host package builds with thinlto.
-	# crosbug.com/731335
 	if use thinlto; then
+		# We need to change the default value of import-instr-limit in
+		# LLVM to limit the text size increase. The default value is
+		# 100, and we change it to 30 to reduce the text size increase
+		# from 25% to 10%. The performance number of page_cycler is the
+		# same on two of the thinLTO configurations, we got 1% slowdown
+		# on speedometer when changing import-instr-limit from 100 to 30.
+		if use gold; then
+			append-ldflags "-Wl,-plugin-opt,-import-instr-limit=30"
+		elif use lld; then
+			append-ldflags "-Wl,-mllvm,-import-instr-limit=30"
+		fi
+	fi
+
+	# We need below change when USE="thinlto" is set. We set this globally
+	# so that users can turn on the "use_thin_lto" in the simplechrome
+	# flow more easily. We might be able to remve the dependency on use
+	# clang because clang is the default compiler now.
+	if use clang ; then
+		export AR="llvm-ar"
+		# USE=thinlto affects host build, we need to set host AR to
+		# llvm-ar to make sure host package builds with thinlto.
+		# crbug.com/731335
 		export AR_host="llvm-ar"
-		export LD_host="${CXX_host}"
-		LD_host+=" -B$(get_binutils_path "${LD_host}")"
+		export RANLIB="llvm-ranlib"
 	fi
 
 	# Set binutils path for goma.
