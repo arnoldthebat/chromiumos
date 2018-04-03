@@ -215,6 +215,8 @@ src_configure() {
 				--with-clang-libdir="${EPREFIX}/usr/lib"
 				"
 		fi
+
+		gallium_enable video_cards_virgl virgl
 	fi
 
 	if use vulkan; then
@@ -238,7 +240,7 @@ src_configure() {
 		myconf+=" $(use_enable osmesa)"
 	fi
 
-	export LLVM_CONFIG=${SYSROOT}/usr/bin/llvm-config-host
+	export LLVM_CONFIG=${SYSROOT}/usr/lib/llvm/bin/llvm-config-host
 
 	# --with-driver=dri|xlib|osmesa || do we need osmesa?
 	econf \
@@ -398,6 +400,7 @@ pkg_prerm() {
 
 # $1 - VIDEO_CARDS flag
 # other args - names of DRI drivers to enable
+# TODO: avoid code duplication for a more elegant implementation
 driver_enable() {
 	case $# in
 		# for enabling unconditionally
