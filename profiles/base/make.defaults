@@ -15,7 +15,7 @@ LLVM_TARGETS="AMDGPU X86"
 # Initial value just for style purposes.
 USE=""
 
-USE="${USE} containers device_jail kvm_host"
+USE="${USE} containers kvm_host"
 
 USE="${USE} legacy_keyboard legacy_power_button sse kernel-4_14"
 

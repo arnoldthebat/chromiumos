@@ -1,0 +1,3 @@
+USE="fuzzer"
+# Keep the debug symbols to get symbolized traces when fuzzing.
+FEATURES="nostrip -splitdebug"
