@@ -28,8 +28,6 @@ fi
 SLOT="0"
 KEYWORDS="*"
 IUSE="
-	afdo_chrome_exp1
-	afdo_chrome_exp2
 	afdo_use
 	+accessibility
 	app_shell
@@ -81,8 +79,7 @@ REQUIRED_USE="
 	libcxx? ( clang )
 	thinlto? ( clang || ( gold lld ) )
 	afdo_use? ( clang )
-	afdo_chrome_exp1? ( afdo_use )
-	afdo_chrome_exp2? ( afdo_use )
+	build_native_assistant? ( chrome_internal )
 	"
 
 OZONE_PLATFORM_PREFIX=ozone_platform_
@@ -134,6 +131,7 @@ CHROME_DIR=/opt/google/chrome
 D_CHROME_DIR="${D}/${CHROME_DIR}"
 
 # For compilation/local chrome
+DEPOT_TOOLS=/mnt/host/depot_tools
 BUILDTYPE="${BUILDTYPE:-Release}"
 BOARD="${BOARD:-${SYSROOT##/build/}}"
 BUILD_OUT="${BUILD_OUT:-out_${BOARD}}"
@@ -168,11 +166,11 @@ AFDO_LOCATION["broadwell"]=${AFDO_GS_DIRECTORY:-"gs://chromeos-prebuilt/afdo-job
 # by the PFQ builder. Don't change the format of the lines or modify by hand.
 declare -A AFDO_FILE
 # MODIFIED BY PFQ, DON' TOUCH....
-AFDO_FILE["benchmark"]="chromeos-chrome-amd64-67.0.3396.85_rc-r1.afdo"
-AFDO_FILE["silvermont"]="R67-3396.57-1528108182.afdo"
-AFDO_FILE["airmont"]="R67-3396.57-1528108182.afdo"
-AFDO_FILE["haswell"]="R67-3396.57-1528108182.afdo"
-AFDO_FILE["broadwell"]="R67-3396.57-1528108182.afdo"
+AFDO_FILE["benchmark"]="chromeos-chrome-amd64-69.0.3497.105_rc-r1.afdo"
+AFDO_FILE["silvermont"]="R69-3497.95-1537178909.afdo"
+AFDO_FILE["airmont"]="R69-3497.87-1537181007.afdo"
+AFDO_FILE["haswell"]="R69-3497.87-1537183207.afdo"
+AFDO_FILE["broadwell"]="R69-3497.73-1537181661.afdo"
 # ....MODIFIED BY PFQ, DON' TOUCH
 
 # This dictionary can be used to manually override the setting for the
@@ -216,8 +214,6 @@ RDEPEND="${RDEPEND}
 	dev-libs/libxml2
 	>=media-libs/alsa-lib-1.0.19
 	media-libs/fontconfig
-	media-libs/freetype
-	media-libs/harfbuzz
 	media-libs/libsync
 	x11-libs/libdrm
 	ozone_platform_gbm? ( media-libs/minigbm )
@@ -264,7 +260,6 @@ AUTOTEST_COMMON="src/chrome/test/chromeos/autotest/files"
 AUTOTEST_DEPS="${AUTOTEST_COMMON}/client/deps"
 AUTOTEST_DEPS_LIST="chrome_test page_cycler_dep perf_data_dep telemetry_dep"
 
-DWO_FILE_DIR="dwo_file_dir"
 IUSE="${IUSE} +autotest"
 
 export CHROMIUM_HOME=/usr/$(get_libdir)/chromium-browser
@@ -317,8 +312,12 @@ set_build_args() {
 		icu_use_data_file=true
 		use_cras=true
 		# use_system_minigbm is set below.
-		use_system_harfbuzz=true
-		use_system_freetype=true
+		# HarfBuzz and FreeType need to be built together in a specific way
+		# to get FreeType autohinting to work properly. Chromium bundles
+		# FreeType and HarfBuzz to meet that need.
+		# See crbug.com/694137 .
+		use_system_harfbuzz=false
+		use_system_freetype=false
 		use_system_libsync=true
 		use_cups=$(usetf cups)
 		# Jumbo merges translation units together, making builds faster on single machines.
@@ -330,6 +329,7 @@ set_build_args() {
 		is_asan=$(usetf asan)
 		is_clang=$(usetf clang)
 		cros_host_is_clang=$(usetf clang)
+		cros_v8_snapshot_is_clang=$(usetf clang)
 		clang_use_chrome_plugins=false
 		use_thin_lto=$(usetf thinlto)
 		use_lld=$(usetf lld)
@@ -412,6 +412,15 @@ set_build_args() {
 				"${arm_cpu}" == "cortex-a15" ]]; then
 			arm_arch="armv7ve"
 		fi
+		if [[ -n "${arm_arch}" ]]; then
+			BUILD_STRING_ARGS+=( arm_arch="${arm_arch}" )
+		fi
+		;;
+	arm64)
+		BUILD_STRING_ARGS+=(
+			target_cpu=arm64
+		)
+		local arm_arch=$(get-flag march)
 		if [[ -n "${arm_arch}" ]]; then
 			BUILD_STRING_ARGS+=( arm_arch="${arm_arch}" )
 		fi
@@ -514,6 +523,9 @@ set_build_args() {
 }
 
 unpack_chrome() {
+	# Add depot_tools to PATH, local chroot builds fail otherwise.
+	export PATH=${PATH}:${DEPOT_TOOLS}
+
 	local cmd=( "${CHROMITE_BIN_DIR}"/sync_chrome )
 	use chrome_internal && cmd+=( --internal )
 	if [[ -n "${CROS_SVN_COMMIT}" ]]; then
@@ -564,8 +576,8 @@ sandboxless_ensure_directory() {
 src_unpack() {
 	tc-export CC CXX
 	local WHOAMI=$(whoami)
-	export EGCLIENT="${EGCLIENT:-/home/${WHOAMI}/depot_tools/gclient}"
-	export ENINJA="${ENINJA:-/home/${WHOAMI}/depot_tools/ninja}"
+	export EGCLIENT="${EGCLIENT:-${DEPOT_TOOLS}/gclient}"
+	export ENINJA="${ENINJA:-${DEPOT_TOOLS}/ninja}"
 	export DEPOT_TOOLS_UPDATE=0
 
 	# Create storage directories.
@@ -671,7 +683,7 @@ src_unpack() {
 		# First check if there is a specified "frozen" AFDO profile.
 		# Otherwise use the current one.
 
-		local AFDO_SRC="${AFDO_PROFILE_SOURCE:-benchmark}"
+		local AFDO_SRC="${AFDO_PROFILE_SOURCE:-silvermont}"
 		local PROFILE_FILE="${AFDO_SRC}_${AFDO_FILE[${AFDO_SRC}]}"
 
 		PROFILE_STATE="CURRENT"
@@ -746,12 +758,16 @@ src_prepare() {
 setup_test_lists() {
 	TEST_FILES=(
 		jpeg_decode_accelerator_unittest
-		media_unittests
+		ozone_gl_unittests
 		sandbox_linux_unittests
 		video_decode_accelerator_unittest
 		video_encode_accelerator_unittest
 		wayland_client_perftests
 	)
+
+	if use vaapi; then
+		TEST_FILES+=( jpeg_encode_accelerator_unittest )
+	fi
 
 	TEST_FILES+=( ppapi/examples/video_decode )
 
@@ -766,7 +782,7 @@ setup_test_lists() {
 		lib{32,64}
 		mock_nacl_gdb
 		ppapi_nacl_tests_{newlib,glibc}.nmf
-		ppapi_nacl_tests_{newlib,glibc}_{x32,x64,arm}.nexe
+		ppapi_nacl_tests_{newlib,glibc}_{x32,x64,arm,arm64}.nexe
 		test_case.html
 		test_case.html.mock-http-headers
 		test_page.css
@@ -804,7 +820,13 @@ setup_compile_flags() {
 
 	# LLVM needs this when parsing profiles.
 	# See README on https://github.com/google/autofdo
-	use clang && append-flags -fdebug-info-for-profiling
+	# For ARM, we do not need this flag because we don't get profiles
+	# from ARM machines. And it triggers an llvm assertion when thinlto
+	# and debug fission is used together.
+	# See https://bugs.llvm.org/show_bug.cgi?id=37255
+	if use clang && ! use arm; then
+		append-flags -fdebug-info-for-profiling
+	fi
 
 	# The .dwp file for x86 and arm exceeds 4GB limit. Adding this flag as a
 	# workaround. The generated symbol files are the same with/without this
@@ -821,14 +843,14 @@ setup_compile_flags() {
 		# from 25% to 10%. The performance number of page_cycler is the
 		# same on two of the thinLTO configurations, we got 1% slowdown
 		# on speedometer when changing import-instr-limit from 100 to 30.
-		if use gold; then
-			EBUILD_LDFLAGS+=( "-Wl,-plugin-opt,-import-instr-limit=30" )
-		elif use lld; then
-			EBUILD_LDFLAGS+=( "-Wl,-mllvm,-import-instr-limit=30" )
-		fi
+		# We need to further reduce it to 20 for arm to limit the size
+		# increase to 10%.
+		local thinlto_ldflag="-Wl,-plugin-opt,-import-instr-limit=30"
 		if use arm; then
-			append-ldflags -flto-dwo-dir=${DWO_FILE_DIR}
+			thinlto_ldflag="-Wl,-plugin-opt,-import-instr-limit=20"
+			EBUILD_LDFLAGS+=( -gsplit-dwarf )
 		fi
+		EBUILD_LDFLAGS+=( ${thinlto_ldflag} )
 	fi
 
 	# Enable std::vector []-operator bounds checking.
@@ -862,9 +884,10 @@ setup_compile_flags() {
 }
 
 src_configure() {
-	tc-export CXX CC AR AS RANLIB STRIP
+	tc-export CXX CC AR AS NM RANLIB STRIP
 	export CC_host=$(usex clang "${CBUILD}-clang" "$(tc-getBUILD_CC)")
 	export CXX_host=$(usex clang "${CBUILD}-clang++" "$(tc-getBUILD_CXX)")
+	export NM_host=$(tc-getBUILD_NM)
 
 	if use gold ; then
 		if [[ "${GOLD_SET}" != "yes" ]]; then
@@ -877,6 +900,7 @@ src_configure() {
 		export CC="${CC} -fuse-ld=lld"
 		export CXX="${CXX} -fuse-ld=lld"
 		export STRIP=eu-strip
+		append-ldflags -Wl,--no-rosegment
 	else
 		ewarn "gold and lld disabled. Using GNU ld."
 	fi
@@ -904,8 +928,12 @@ src_configure() {
 
 	setup_compile_flags
 
-	export BOTO_CONFIG=/home/$(whoami)/.boto
-	export PATH=${PATH}:/home/$(whoami)/depot_tools
+	# We might set BOTO_CONFIG in the builder environment in case the
+	# existing file needs modifications (e.g. for working with older
+	# branches). So don't overwrite it if it's already set.
+	# See https://crbug.com/847676 for details.
+	export BOTO_CONFIG="${BOTO_CONFIG:-/home/$(whoami)/.boto}"
+	export PATH=${PATH}:${DEPOT_TOOLS}
 
 	export DEPOT_TOOLS_GSUTIL_BIN_DIR="${CHROME_CACHE_DIR}/gsutil_bin"
 	# The venv logic seems to misbehave when cross-compiling.  Since our SDK
@@ -933,6 +961,7 @@ src_configure() {
 		custom_toolchain="//build/toolchain/cros:target"
 		v8_snapshot_toolchain="//build/toolchain/cros:v8_snapshot"
 		cros_target_ld="${LD}"
+		cros_target_nm="${NM}"
 		cros_target_extra_cflags="${CFLAGS} ${EBUILD_CFLAGS[*]}"
 		cros_target_extra_cppflags="${CPPFLAGS}"
 		cros_target_extra_cxxflags="${CXXFLAGS} ${EBUILD_CXXFLAGS[*]}"
@@ -941,6 +970,7 @@ src_configure() {
 		cros_host_cxx="${CXX_host}"
 		cros_host_ar="${AR_host}"
 		cros_host_ld="${LD_host}"
+		cros_host_nm="${NM_host}"
 		cros_host_extra_cflags="${CFLAGS_host}"
 		cros_host_extra_cxxflags="${CXXFLAGS_host}"
 		cros_host_extra_cppflags="${CPPFLAGS_host}"
@@ -949,6 +979,7 @@ src_configure() {
 		cros_v8_snapshot_cxx="${CXX_host}"
 		cros_v8_snapshot_ar="${AR_host}"
 		cros_v8_snapshot_ld="${LD_host}"
+		cros_v8_snapshot_nm="${NM_host}"
 		cros_v8_snapshot_extra_cflags="${CFLAGS_host}"
 		cros_v8_snapshot_extra_cxxflags="${CXXFLAGS_host}"
 		cros_v8_snapshot_extra_cppflags="${CPPFLAGS_host}"
@@ -999,7 +1030,7 @@ chrome_make() {
 		pwd > "${GLOG_log_dir}/ninja_cwd"
 		echo "${command[@]}" > "${GLOG_log_dir}/ninja_command"
 	fi
-	PATH=${PATH}:/home/$(whoami)/depot_tools "${command[@]}"
+	PATH=${PATH}:${DEPOT_TOOLS} "${command[@]}"
 	local ret=$?
 	if use_goma_log; then
 		echo "${ret}" > "${GLOG_log_dir}/ninja_exit"
@@ -1259,16 +1290,9 @@ src_install() {
 	LS=$(ls -alhS ${FROM})
 	einfo "CHROME_DIR after build\n${LS}"
 
-	insinto /etc/dbus-1/system.d
-	# Copy org.chromium.LibCrosService.conf, the D-Bus config file for the
-	# D-Bus service exported by Chrome.
-	# TODO(teravest): Remove this installation once this file is present
-	# in /opt/google/chrome/dbus.
-	DBUS="${CHROME_ROOT}"/src/chromeos/dbus/services
-	doins "${DBUS}"/org.chromium.LibCrosService.conf
-
-	# Copy a config file that includes other configs that are installed to
+	# Copy a D-Bus config file that includes other configs that are installed to
 	# /opt/google/chrome/dbus by deploy_chrome.
+	insinto /etc/dbus-1/system.d
 	doins "${FILESDIR}"/chrome.conf
 
 	# Copy Quickoffice resources for official build.
@@ -1286,6 +1310,9 @@ src_install() {
 		case "${ARCH}" in
 		arm)
 			doins -r "${QUICKOFFICE}"/_platform_specific/arm
+			;;
+		arm64)
+			doins -r "${QUICKOFFICE}"/_platform_specific/arm64
 			;;
 		x86)
 			doins -r "${QUICKOFFICE}"/_platform_specific/x86_32
@@ -1371,8 +1398,9 @@ src_install() {
 	LS=$(ls -alhS ${D}/${CHROME_DIR})
 	einfo "CHROME_DIR after deploy_chrome\n${LS}"
 
-	# Keep the .dwp file.
-	if use chrome_debug && use debug_fission; then
+	# Keep the .dwp file for debugging.  On AMD64 systems, dwo files aren't
+	# generated even when using debug fission.
+	if use arm && use chrome_debug && use debug_fission; then
 		mkdir -p "${D}/usr/lib/debug/${CHROME_DIR}"
 		DWP="${CHOST}"-dwp
 		cd "${D}/${CHROME_DIR}"
@@ -1391,9 +1419,8 @@ src_install() {
 			if [[ ${source} == "./chrome-sandbox" ]] ; then
 				source="chrome_sandbox"
 			fi
-			${DWP} -e "${FROM}/${source}" -o "${D}/usr/lib/debug/${CHROME_DIR}/${i}.dwp"
+			${DWP} -e "${FROM}/${source}" -o "${D}/usr/lib/debug/${CHROME_DIR}/${i}.dwp" || die
 		done < <(scanelf -BRyF '%F' ".")
-		rm -rf ${DWO_FILE_DIR}
 	fi
 
 	if use build_tests; then
@@ -1415,7 +1442,7 @@ pkg_preinst() {
 		die "Installed chrome binary got suspiciously large (size=${CHROME_SIZE})."
 	fi
 	if use arm; then
-		local files=$(find "${ED}/usr/lib/debug${CHROME_DIR}" -size 4G -o -size +4G)
+		local files=$(find "${ED}/usr/lib/debug${CHROME_DIR}" -size +$((4 * 1024 * 1024 * 1024 - 1))c)
 		[[ -n ${files} ]] && die "Debug files exceed 4GiB: ${files}"
 	fi
 }

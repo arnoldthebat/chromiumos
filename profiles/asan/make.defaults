@@ -1,1 +1,1 @@
-USE="asan tests_logging_AsanCrash"
+USE="asan -cfi tests_logging_AsanCrash -thinlto"

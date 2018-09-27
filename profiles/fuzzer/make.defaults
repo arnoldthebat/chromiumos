@@ -1,3 +1,6 @@
 USE="fuzzer"
 # Keep the debug symbols to get symbolized traces when fuzzing.
 FEATURES="nostrip -splitdebug"
+CFLAGS=" -fsanitize=address -fsanitize=fuzzer-no-link"
+CXXFLAGS=" -fsanitize=address -fsanitize=fuzzer-no-link"
+LDFLAGS=" -Xcompiler -fsanitize=address -Xcompiler -fsanitize=fuzzer-no-link"

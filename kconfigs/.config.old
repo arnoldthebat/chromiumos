@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/x86 4.14.33 Kernel Configuration
+# Linux/x86 4.14.56 Kernel Configuration
 #
 CONFIG_64BIT=y
 CONFIG_X86_64=y
@@ -2685,6 +2685,7 @@ CONFIG_I2C_STUB=m
 CONFIG_SPI=y
 # CONFIG_SPI_DEBUG is not set
 CONFIG_SPI_MASTER=y
+# CONFIG_SPI_MEM is not set
 
 #
 # SPI Master Controller Drivers
@@ -3385,6 +3386,7 @@ CONFIG_INTEL_GTT=y
 # CONFIG_VGA_SWITCHEROO is not set
 CONFIG_DRM=y
 CONFIG_DRM_MIPI_DSI=y
+CONFIG_DRM_PANEL_ORIENTATION_QUIRKS=y
 # CONFIG_DRM_DP_AUX_CHARDEV is not set
 # CONFIG_DRM_DEBUG_MM is not set
 # CONFIG_DRM_DEBUG_MM_SELFTEST is not set
@@ -4779,7 +4781,6 @@ CONFIG_IOMMU_SUPPORT=y
 #
 # Qualcomm SoC drivers
 #
-# CONFIG_QCOM_GENI_SE is not set
 # CONFIG_SUNXI_SRAM is not set
 # CONFIG_SOC_TI is not set
 # CONFIG_PM_DEVFREQ is not set
@@ -4896,6 +4897,7 @@ CONFIG_IIO_CROS_EC_SENSORS_RING=m
 #
 # Counters
 #
+# CONFIG_IIO_CROS_EC_SENSORS_SYNC is not set
 
 #
 # Digital to analog converters
@@ -5159,6 +5161,8 @@ CONFIG_NVMEM=y
 # FSI support
 #
 # CONFIG_FSI is not set
+# CONFIG_PKGLIST is not set
+# CONFIG_DRM_EVDI is not set
 
 #
 # Firmware Drivers
@@ -5840,7 +5844,6 @@ CONFIG_CRYPTO_DES=y
 # CONFIG_CRYPTO_FCRYPT is not set
 # CONFIG_CRYPTO_KHAZAD is not set
 # CONFIG_CRYPTO_SALSA20 is not set
-# CONFIG_CRYPTO_SALSA20_X86_64 is not set
 # CONFIG_CRYPTO_CHACHA20 is not set
 # CONFIG_CRYPTO_CHACHA20_X86_64 is not set
 # CONFIG_CRYPTO_SEED is not set
@@ -5913,7 +5916,7 @@ CONFIG_HAVE_KVM_IRQ_BYPASS=y
 CONFIG_VIRTUALIZATION=y
 CONFIG_KVM=y
 CONFIG_KVM_INTEL=y
-# CONFIG_KVM_AMD is not set
+CONFIG_KVM_AMD=y
 # CONFIG_KVM_MMU_AUDIT is not set
 # CONFIG_VHOST_NET is not set
 CONFIG_VHOST_VSOCK=m

@@ -19,6 +19,8 @@ USE="${USE} containers kvm_host"
 
 USE="${USE} legacy_keyboard legacy_power_button sse kernel-4_14"
 
+USE="${USE} direncryption"
+
 # Enable all optional features on generic overlays.
 USE="${USE} buffet -wifi_bootstrapping"
 
