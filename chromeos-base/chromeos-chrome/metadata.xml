@@ -23,6 +23,7 @@
 	<flag name='nacl'>Build Native Client (NaCL) support</flag>
 	<flag name='build_native_assistant'>Build native Google Assistant support</flag>
 	<flag name='neon'>Use neon instructions (ARM only)</flag>
+	<flag name='oobe_config'>Build utilities to save and restore OOBE config</flag>
 	<flag name='ozone'>Build Chrome for the Ozone metaplatform.</flag>
 	<flag name='pgo_generate'>Generate profile-guided optimization data</flag>
 	<flag name='pgo_use'>Use profile data for profile-guided optimization</flag>

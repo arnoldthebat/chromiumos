@@ -21,7 +21,9 @@ RDEPEND="
 	sys-kernel/linux-firmware
 	media-libs/x264
 	net-wireless/broadcom-sta
-	net-wireless/rfkill
+	net-wireless/rtl8188eu
+	net-wireless/rtl8723au
+	net-wireless/rtl8723bu
 	net-wireless/rtl8812au
 	www-plugins/chrome-binary-plugins
 "

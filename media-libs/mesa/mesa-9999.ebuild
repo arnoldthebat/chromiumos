@@ -4,6 +4,9 @@
 
 EAPI=4
 
+CROS_WORKON_COMMIT="11adea4b24140db37bc1eb5c858435602d2ce224"
+CROS_WORKON_TREE="286d9bc36c9a9302b6578a2d791a97f70c98ff74"
+
 EGIT_REPO_URI="git://anongit.freedesktop.org/mesa/mesa"
 CROS_WORKON_PROJECT="chromiumos/third_party/mesa"
 CROS_WORKON_BLACKLIST="1"
@@ -36,11 +39,11 @@ fi
 # GLES[2]/gl[2]{,ext,platform}.h are SGI-B-2.0
 LICENSE="MIT LGPL-3 SGI-B-2.0"
 SLOT="0"
-KEYWORDS="~*"
+KEYWORDS="*"
 
 INTEL_CARDS="intel"
-RADEON_CARDS="amdgpu radeon"
-VIDEO_CARDS="${INTEL_CARDS} ${RADEON_CARDS} freedreno llvmpipe mach64 mga nouveau r128 radeonsi savage sis tdfx via virgl vmware"
+RADEON_CARDS="r100 r200 r300 r600 radeon radeonsi"
+VIDEO_CARDS="${RADEON_CARDS} freedreno i915 i965 imx intel nouveau vc4 virgl vivante vmware"
 for card in ${VIDEO_CARDS}; do
 	IUSE_VIDEO_CARDS+=" video_cards_${card}"
 done
@@ -74,7 +77,7 @@ DEPEND="${RDEPEND}
 	sys-devel/bison
 	sys-devel/flex
 	virtual/pkgconfig
-	>=x11-proto/dri2proto-2.6
+
 	X? (
 		>=x11-proto/glproto-1.4.11
 		>=x11-proto/xextproto-7.0.99.1
@@ -111,27 +114,24 @@ src_prepare() {
 			configure.ac || die
 	fi
 
-	epatch "${FILESDIR}"/9.1-mesa-st-no-flush-front.patch
-	epatch "${FILESDIR}"/10.3-state_tracker-gallium-fix-crash-with-st_renderbuffer.patch
-	epatch "${FILESDIR}"/10.3-gallium-Fix-renderbuffer-sampler-view-destruction-cr.patch
-	epatch "${FILESDIR}"/8.1-array-overflow.patch
-	epatch "${FILESDIR}"/10.0-i965-Disable-ctx-gen6.patch
-	epatch "${FILESDIR}"/10.3-dri-i965-Return-NULL-if-we-don-t-have-a-miptree.patch
-	epatch "${FILESDIR}"/10.3-Fix-workaround-corner-cases.patch
-	epatch "${FILESDIR}"/10.3-drivers-dri-i965-gen6-Clamp-scissor-state-instead-of.patch
-	epatch "${FILESDIR}"/11.5-meta-state-fix.patch
-	epatch "${FILESDIR}"/17.0-glcpp-Hack-to-handle-expressions-in-line-di.patch
-	epatch "${FILESDIR}"/17.0-CHROMIUM-disable-hiz-on-braswell.patch
-	epatch "${FILESDIR}"/17.1-VIRGL-surfaces-samplers-virtual-context-refcount.patch
-	epatch "${FILESDIR}"/17.2-i965-Use-is_scheduling_barrier-instead-of-s.patch
-	epatch "${FILESDIR}"/17.2-0001-i965-Make-intel_miptree_prepare_texture-take-level-l.patch
-	epatch "${FILESDIR}"/17.2-0002-i965-Only-resolve-texture-levels-layers-that-are-acc.patch
-	epatch "${FILESDIR}"/17.2-0003-i965-Remove-the-intel_miptree_prepare_fb_fetch-wrapp.patch
-	epatch "${FILESDIR}"/17.2-0004-i965-Don-t-disable-aux-buffers-for-non-overlapping-m.patch
+	#epatch "${FILESDIR}"/9.1-mesa-st-no-flush-front.patch
+	#epatch "${FILESDIR}"/10.3-state_tracker-gallium-fix-crash-with-st_renderbuffer.patch
+	#epatch "${FILESDIR}"/10.3-gallium-Fix-renderbuffer-sampler-view-destruction-cr.patch
+	#epatch "${FILESDIR}"/8.1-array-overflow.patch
+	#epatch "${FILESDIR}"/10.0-i965-Disable-ctx-gen6.patch
+	#epatch "${FILESDIR}"/10.3-dri-i965-Return-NULL-if-we-don-t-have-a-miptree.patch
+	#epatch "${FILESDIR}"/10.3-Fix-workaround-corner-cases.patch
+	#epatch "${FILESDIR}"/10.3-drivers-dri-i965-gen6-Clamp-scissor-state-instead-of.patch
+	#epatch "${FILESDIR}"/11.5-meta-state-fix.patch
+	#epatch "${FILESDIR}"/17.0-glcpp-Hack-to-handle-expressions-in-line-di.patch
+	#epatch "${FILESDIR}"/17.0-CHROMIUM-disable-hiz-on-braswell.patch
+	#epatch "${FILESDIR}"/17.1-VIRGL-surfaces-samplers-virtual-context-refcount.patch
+	#epatch "${FILESDIR}"/17.2-i965-Use-is_scheduling_barrier-instead-of-s.patch
+	#epatch "${FILESDIR}"/17.2-0001-i965-Make-intel_miptree_prepare_texture-take-level-l.patch
+	#epatch "${FILESDIR}"/17.2-0002-i965-Only-resolve-texture-levels-layers-that-are-acc.patch
+	#epatch "${FILESDIR}"/17.2-0003-i965-Remove-the-intel_miptree_prepare_fb_fetch-wrapp.patch
+	#epatch "${FILESDIR}"/17.2-0004-i965-Don-t-disable-aux-buffers-for-non-overlapping-m.patch
 	base_src_prepare
-
-	# Produce a dummy git_sha1.h file because .git will not be copied to portage tmp directory
-	echo '#define MESA_GIT_SHA1 "git-0000000"' > src/git_sha1.h
 
 	eautoreconf
 }
@@ -149,37 +149,98 @@ src_configure() {
 
 	if use classic; then
 	# Configurable DRI drivers
+		driver_enable swrast
+
 		# Intel code
-		driver_enable video_cards_intel i965
+		driver_enable video_cards_i915 i915
+		driver_enable video_cards_i965 i965
+		if ! use video_cards_i915 && \
+			! use video_cards_i965; then
+			driver_enable video_cards_intel i915 i965
+		fi
+
+		# Nouveau code
+		driver_enable video_cards_nouveau nouveau
+
+		# ATI code
+		driver_enable video_cards_r100 radeon
+		driver_enable video_cards_r200 r200
+		if ! use video_cards_r100 && \
+				! use video_cards_r200; then
+			driver_enable video_cards_radeon radeon r200
+		fi
+	fi
+
+	if use egl; then
+		myconf+=" --with-egl-platforms=x11,surfaceless$(use wayland && echo ",wayland")$(use gbm && echo ",drm")"
 	fi
 
 	if use gallium; then
-	# Configurable gallium drivers
-		gallium_driver_enable video_cards_llvmpipe swrast
+		myconf+="
+			$(use_enable d3d9 nine)
+			$(use_enable llvm)
+			$(use_enable openmax omx)
+			$(use_enable vaapi va)
+			$(use_enable vdpau)
+			$(use_enable xa)
+			$(use_enable xvmc)
+		"
+		use vaapi && myconf+=" --with-va-libdir=/usr/$(get_libdir)/va/drivers"
 
-		# Nouveau code
-		gallium_driver_enable video_cards_nouveau nouveau
+		gallium_enable swrast
+		gallium_enable video_cards_vc4 vc4
+		gallium_enable video_cards_vivante etnaviv
+		gallium_enable video_cards_vmware svga
+		gallium_enable video_cards_nouveau nouveau
+		gallium_enable video_cards_i915 i915
+		gallium_enable video_cards_imx imx
+		if ! use video_cards_i915 && \
+			! use video_cards_i965; then
+			gallium_enable video_cards_intel i915
+		fi
 
-		# ATI code
-		gallium_driver_enable video_cards_radeon r300 r600
-		gallium_driver_enable video_cards_amdgpu radeonsi
+		gallium_enable video_cards_r300 r300
+		gallium_enable video_cards_r600 r600
+		gallium_enable video_cards_radeonsi radeonsi
+		if ! use video_cards_r300 && \
+				! use video_cards_r600; then
+			gallium_enable video_cards_radeon r300 r600
+		fi
 
-		# Freedreno code
-		gallium_driver_enable video_cards_freedreno freedreno
+		gallium_enable video_cards_freedreno freedreno
+		# opencl stuff
+		if use opencl; then
+			myconf+="
+				$(use_enable opencl)
+				--with-clang-libdir="${EPREFIX}/usr/lib"
+				"
+		fi
 
-		gallium_driver_enable video_cards_virgl virgl
+		gallium_enable video_cards_virgl virgl
 	fi
 
 	if use vulkan; then
-		if use video_cards_intel; then
-			VULKAN_DRIVERS+=",intel"
-		fi
-		if use video_cards_amdgpu; then
-			VULKAN_DRIVERS+=",radeon"
-		fi
+		vulkan_enable video_cards_i965 intel
+		vulkan_enable video_cards_radeonsi radeon
 	fi
 
-	export LLVM_CONFIG=${SYSROOT}/usr/bin/llvm-config-host
+	# x86 hardened pax_kernel needs glx-rts, bug 240956
+	if [[ ${ABI} == x86 ]]; then
+		myconf+=" $(use_enable pax_kernel glx-read-only-text)"
+	fi
+
+	# on abi_x86_32 hardened we need to have asm disable
+	if [[ ${ABI} == x86* ]] && use pic; then
+		myconf+=" --disable-asm"
+	fi
+
+	if use gallium; then
+		myconf+=" $(use_enable osmesa gallium-osmesa)"
+	else
+		myconf+=" $(use_enable osmesa)"
+	fi
+
+	export LLVM_CONFIG=${SYSROOT}/usr/lib/llvm/bin/llvm-config-host
 
 	# --with-driver=dri|xlib|osmesa || do we need osmesa?
 	econf \
@@ -214,63 +275,132 @@ src_configure() {
 		$(use egl && echo "--with-platforms=surfaceless")
 }
 
-src_install() {
-	base_src_install
+multilib_src_install() {
+	emake install DESTDIR="${D}"
 
-	# Remove redundant GLES headers
-	rm -f "${D}"/usr/include/{EGL,GLES2,GLES3,KHR}/*.h || die "Removing GLES headers failed."
-
-	# Move libGL and others from /usr/lib to /usr/lib/opengl/blah/lib
-	# because user can eselect desired GL provider.
-	ebegin "Moving libGL and friends for dynamic switching"
-		dodir /usr/$(get_libdir)/opengl/${OPENGL_DIR}/{lib,extensions,include}
-		local x
-		for x in "${D}"/usr/$(get_libdir)/libGL.{la,a,so*}; do
-			if [ -f ${x} -o -L ${x} ]; then
-				mv -f "${x}" "${D}"/usr/$(get_libdir)/opengl/${OPENGL_DIR}/lib \
-					|| die "Failed to move ${x}"
+	if use classic || use gallium; then
+			ebegin "Moving DRI/Gallium drivers for dynamic switching"
+			local gallium_drivers=( i915_dri.so i965_dri.so r300_dri.so r600_dri.so swrast_dri.so )
+			keepdir /usr/$(get_libdir)/dri
+			dodir /usr/$(get_libdir)/mesa
+			for x in ${gallium_drivers[@]}; do
+				if [ -f "$(get_libdir)/gallium/${x}" ]; then
+					mv -f "${ED}/usr/$(get_libdir)/dri/${x}" "${ED}/usr/$(get_libdir)/dri/${x/_dri.so/g_dri.so}" \
+						|| die "Failed to move ${x}"
+				fi
+			done
+			if use classic; then
+				emake -C "${BUILD_DIR}/src/mesa/drivers/dri" DESTDIR="${D}" install
 			fi
-		done
-		for x in "${D}"/usr/include/GL/{gl.h,glx.h,glext.h,glxext.h}; do
-			if [ -f ${x} -o -L ${x} ]; then
-				mv -f "${x}" "${D}"/usr/$(get_libdir)/opengl/${OPENGL_DIR}/include \
-					|| die "Failed to move ${x}"
-			fi
-		done
-	eend $?
-
-	dodir /usr/$(get_libdir)/dri
-	insinto "/usr/$(get_libdir)/dri/"
-	insopts -m0755
-	# install the gallium drivers we use
-	local gallium_drivers_files=( nouveau_dri.so r300_dri.so r600_dri.so msm_dri.so swrast_dri.so )
-	for x in ${gallium_drivers_files[@]}; do
-		if [ -f "${S}/$(get_libdir)/gallium/${x}" ]; then
-			doins "${S}/$(get_libdir)/gallium/${x}"
+			for x in "${ED}"/usr/$(get_libdir)/dri/*.so; do
+				if [ -f ${x} -o -L ${x} ]; then
+					mv -f "${x}" "${x/dri/mesa}" \
+						|| die "Failed to move ${x}"
+				fi
+			done
+			pushd "${ED}"/usr/$(get_libdir)/dri || die "pushd failed"
+			ln -s ../mesa/*.so . || die "Creating symlink failed"
+			# remove symlinks to drivers known to eselect
+			for x in ${gallium_drivers[@]}; do
+				if [ -f ${x} -o -L ${x} ]; then
+					rm "${x}" || die "Failed to remove ${x}"
+				fi
+			done
+			popd
+		eend $?
+	fi
+	if use opencl; then
+		ebegin "Moving Gallium/Clover OpenCL implementation for dynamic switching"
+		local cl_dir="/usr/$(get_libdir)/OpenCL/vendors/mesa"
+		dodir ${cl_dir}/{lib,include}
+		if [ -f "${ED}/usr/$(get_libdir)/libOpenCL.so" ]; then
+			mv -f "${ED}"/usr/$(get_libdir)/libOpenCL.so* \
+			"${ED}"${cl_dir}
 		fi
-	done
-
-	# install classic drivers we use
-	local classic_drivers_files=( i810_dri.so i965_dri.so nouveau_vieux_dri.so radeon_dri.so r200_dri.so )
-	for x in ${classic_drivers_files[@]}; do
-		if [ -f "${S}/$(get_libdir)/${x}" ]; then
-			doins "${S}/$(get_libdir)/${x}"
+		if [ -f "${ED}/usr/include/CL/opencl.h" ]; then
+			mv -f "${ED}"/usr/include/CL \
+			"${ED}"${cl_dir}/include
 		fi
-	done
+		eend $?
+	fi
 
-	# Set driconf option to enable S3TC hardware decompression
-	insinto "/etc/"
-	doins "${FILESDIR}"/drirc
+	if use openmax; then
+		echo "XDG_DATA_DIRS=\"${EPREFIX}/usr/share/mesa/xdg\"" > "${T}/99mesaxdgomx"
+		doenvd "${T}"/99mesaxdgomx
+		keepdir /usr/share/mesa/xdg
+	fi
+}
+
+multilib_src_install_all() {
+	find "${ED}" -name '*.la' -delete
+	einstalldocs
+
+	if use !bindist; then
+		dodoc docs/patents.txt
+	fi
+
+	# Install config file for eselect mesa
+	insinto /usr/share/mesa
+	newins "${FILESDIR}/eselect-mesa.conf.9.2" eselect-mesa.conf
+}
+
+multilib_src_test() {
+	if use llvm; then
+		local llvm_tests='lp_test_arit lp_test_arit lp_test_blend lp_test_blend lp_test_conv lp_test_conv lp_test_format lp_test_format lp_test_printf lp_test_printf'
+		pushd src/gallium/drivers/llvmpipe >/dev/null || die
+		emake ${llvm_tests}
+		pax-mark m ${llvm_tests}
+		popd >/dev/null || die
+	fi
+	emake check
 }
 
 pkg_postinst() {
 	# Switch to the xorg implementation.
 	echo
 	eselect opengl set --use-old ${OPENGL_DIR}
+
+	# Select classic/gallium drivers
+	if use classic || use gallium; then
+		eselect mesa set --auto
+	fi
+
+	# Switch to mesa opencl
+	if use opencl; then
+		eselect opencl set --use-old ${PN}
+	fi
+
+	# run omxregister-bellagio to make the OpenMAX drivers known system-wide
+	if use openmax; then
+		ebegin "Registering OpenMAX drivers"
+		BELLAGIO_SEARCH_PATH="${EPREFIX}/usr/$(get_libdir)/libomxil-bellagio0" \
+			OMX_BELLAGIO_REGISTRY=${EPREFIX}/usr/share/mesa/xdg/.omxregister \
+			omxregister-bellagio
+		eend $?
+	fi
+
+	# warn about patent encumbered texture-float
+	if use !bindist; then
+		elog "USE=\"bindist\" was not set. Potentially patent encumbered code was"
+		elog "enabled. Please see patents.txt for an explanation."
+	fi
+
+	if ! has_version media-libs/libtxc_dxtn; then
+		elog "Note that in order to have full S3TC support, it is necessary to install"
+		elog "media-libs/libtxc_dxtn as well. This may be necessary to get nice"
+		elog "textures in some apps, and some others even require this to run."
+	fi
+}
+
+pkg_prerm() {
+	if use openmax; then
+		rm "${EPREFIX}"/usr/share/mesa/xdg/.omxregister
+	fi
 }
 
 # $1 - VIDEO_CARDS flag
 # other args - names of DRI drivers to enable
+# TODO: avoid code duplication for a more elegant implementation
 driver_enable() {
 	case $# in
 		# for enabling unconditionally
@@ -288,9 +418,7 @@ driver_enable() {
 	esac
 }
 
-# $1 - VIDEO_CARDS flag
-# other args - names of DRI drivers to enable
-gallium_driver_enable() {
+gallium_enable() {
 	case $# in
 		# for enabling unconditionally
 		1)
@@ -301,6 +429,23 @@ gallium_driver_enable() {
 				shift
 				for i in $@; do
 					GALLIUM_DRIVERS+=",${i}"
+				done
+			fi
+			;;
+	esac
+}
+
+vulkan_enable() {
+	case $# in
+		# for enabling unconditionally
+		1)
+			VULKAN_DRIVERS+=",$1"
+			;;
+		*)
+			if use $1; then
+				shift
+				for i in $@; do
+					VULKAN_DRIVERS+=",${i}"
 				done
 			fi
 			;;

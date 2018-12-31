@@ -1,0 +1,6 @@
+# Copyright 2018 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# gbm support is needed to build virglrenderer, https://crbug.com/867022 .
+media-libs/mesa gbm

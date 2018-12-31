@@ -33,10 +33,9 @@ IUSE="
 	app_shell
 	asan
 	+authpolicy
-	build_native_assistant
 	+build_tests
 	+chrome_debug
-	cfi
+	+cfi
 	chrome_debug_tests
 	chrome_internal
 	chrome_media
@@ -59,11 +58,13 @@ IUSE="
 	mojo
 	+nacl
 	neon
+	new_tcmalloc
+	oobe_config
 	opengl
 	opengles
 	+runhooks
 	+smbprovider
-	thinlto
+	+thinlto
 	+v4l2_codec
 	v4lplugin
 	vaapi
@@ -79,7 +80,6 @@ REQUIRED_USE="
 	libcxx? ( clang )
 	thinlto? ( clang || ( gold lld ) )
 	afdo_use? ( clang )
-	build_native_assistant? ( chrome_internal )
 	"
 
 OZONE_PLATFORM_PREFIX=ozone_platform_
@@ -103,28 +103,6 @@ STRIP_MASK+=" */nacl_helper_bootstrap"
 
 # Portage version without optional portage suffix.
 CHROME_VERSION="${PV/_*/}"
-
-CHROME_SRC="chrome-src"
-if use chrome_internal; then
-	CHROME_SRC="${CHROME_SRC}-internal"
-fi
-
-# CHROME_CACHE_DIR is used for storing output artifacts, and is always a
-# regular directory inside the chroot (i.e. it's never mounted in, so it's
-# always safe to use cp -al for these artifacts).
-if [[ -z ${CHROME_CACHE_DIR} ]] ; then
-	CHROME_CACHE_DIR="/var/cache/chromeos-chrome/${CHROME_SRC}"
-fi
-addwrite "${CHROME_CACHE_DIR}"
-
-# CHROME_DISTDIR is used for storing the source code, if any source code
-# needs to be unpacked at build time (e.g. in the SERVER_SOURCE scenario.)
-# It will be mounted into the chroot, so it is never safe to use cp -al
-# for these files.
-if [[ -z ${CHROME_DISTDIR} ]] ; then
-	CHROME_DISTDIR="${PORTAGE_ACTUAL_DISTDIR:-${DISTDIR}}/${CHROME_SRC}"
-fi
-addwrite "${CHROME_DISTDIR}"
 
 # chrome destination directory
 CHROME_DIR=/opt/google/chrome
@@ -157,7 +135,7 @@ AFDO_COMPRESSOR_SUFFIX["broadwell"]=".xz"
 
 declare -A AFDO_LOCATION
 AFDO_LOCATION["benchmark"]=${AFDO_GS_DIRECTORY:-"gs://chromeos-prebuilt/afdo-job/llvm/"}
-AFDO_LOCATION["silvermont"]=${AFDO_GS_DIRECTORY:-"gs://chromeos-prebuilt/afdo-job/cwp/chrome/"}
+AFDO_LOCATION["silvermont"]=${AFDO_GS_DIRECTORY:-"gs://chromeos-prebuilt/afdo-job/cwp/chrome/silvermont/"}
 AFDO_LOCATION["airmont"]=${AFDO_GS_DIRECTORY:-"gs://chromeos-prebuilt/afdo-job/cwp/chrome/airmont/"}
 AFDO_LOCATION["haswell"]=${AFDO_GS_DIRECTORY:-"gs://chromeos-prebuilt/afdo-job/cwp/chrome/haswell/"}
 AFDO_LOCATION["broadwell"]=${AFDO_GS_DIRECTORY:-"gs://chromeos-prebuilt/afdo-job/cwp/chrome/broadwell/"}
@@ -166,11 +144,11 @@ AFDO_LOCATION["broadwell"]=${AFDO_GS_DIRECTORY:-"gs://chromeos-prebuilt/afdo-job
 # by the PFQ builder. Don't change the format of the lines or modify by hand.
 declare -A AFDO_FILE
 # MODIFIED BY PFQ, DON' TOUCH....
-AFDO_FILE["benchmark"]="chromeos-chrome-amd64-69.0.3497.105_rc-r1.afdo"
-AFDO_FILE["silvermont"]="R69-3497.95-1537178909.afdo"
-AFDO_FILE["airmont"]="R69-3497.87-1537181007.afdo"
-AFDO_FILE["haswell"]="R69-3497.87-1537183207.afdo"
-AFDO_FILE["broadwell"]="R69-3497.73-1537181661.afdo"
+AFDO_FILE["benchmark"]="chromeos-chrome-amd64-71.0.3578.101_rc-r1.afdo"
+AFDO_FILE["silvermont"]="R71-3578.71-1544441132.afdo"
+AFDO_FILE["airmont"]="R71-3578.71-1544443063.afdo"
+AFDO_FILE["haswell"]="R71-3578.71-1544440698.afdo"
+AFDO_FILE["broadwell"]="R71-3578.71-1544443496.afdo"
 # ....MODIFIED BY PFQ, DON' TOUCH
 
 # This dictionary can be used to manually override the setting for the
@@ -243,6 +221,7 @@ RDEPEND="${RDEPEND}
 		sys-libs/libcxxabi
 		sys-libs/libcxx
 	)
+	oobe_config? ( chromeos-base/oobe_config )
 	smbprovider? ( chromeos-base/smbprovider )
 	"
 
@@ -324,6 +303,8 @@ set_build_args() {
 		# This flag is not automatically tested, so it may not work all the time.
 		use_jumbo_build=$(usetf jumbo)
 		use_bundled_fontconfig=false
+		# If to use the new tcmalloc version in Chromium.
+		use_new_tcmalloc=$(usetf new_tcmalloc)
 
 		# Clang features.
 		is_asan=$(usetf asan)
@@ -372,17 +353,6 @@ set_build_args() {
 	if use "ozone_platform_gbm"; then
 		BUILD_ARGS+=(use_system_minigbm=true)
 		BUILD_ARGS+=(use_system_libdrm=true)
-	fi
-
-	# Assistant features.
-	# Only add the args when use flag is on. This is to avoid conflicting
-	# with future finch based release. At that time, these build args will
-	# be default true.
-	if use "build_native_assistant"; then
-		BUILD_ARGS+=(
-			enable_cros_assistant=true
-			enable_cros_libassistant=true
-		)
 	fi
 
 	# Set proper build args for the arch
@@ -517,9 +487,6 @@ set_build_args() {
 		fi
 		BUILD_ARGS+=( symbol_level=2 )
 	fi
-
-	# Prevents gclient from updating self.
-	export DEPOT_TOOLS_UPDATE=0
 }
 
 unpack_chrome() {
@@ -528,9 +495,7 @@ unpack_chrome() {
 
 	local cmd=( "${CHROMITE_BIN_DIR}"/sync_chrome )
 	use chrome_internal && cmd+=( --internal )
-	if [[ -n "${CROS_SVN_COMMIT}" ]]; then
-		cmd+=( --revision="${CROS_SVN_COMMIT}" )
-	elif [[ "${CHROME_VERSION}" != "9999" ]]; then
+	if [[ "${CHROME_VERSION}" != "9999" ]]; then
 		cmd+=( --tag="${CHROME_VERSION}" )
 	fi
 	# --reset tells sync_chrome to blow away local changes and to feel
@@ -578,18 +543,37 @@ src_unpack() {
 	local WHOAMI=$(whoami)
 	export EGCLIENT="${EGCLIENT:-${DEPOT_TOOLS}/gclient}"
 	export ENINJA="${ENINJA:-${DEPOT_TOOLS}/ninja}"
+
+	# Prevents gclient from updating self.
 	export DEPOT_TOOLS_UPDATE=0
+
+	# Prevent gclient metrics collection.
+	export DEPOT_TOOLS_METRICS=0
+
+	CHROME_SRC="chrome-src"
+	if use chrome_internal; then
+		CHROME_SRC+="-internal"
+	fi
+
+	# CHROME_CACHE_DIR is used for storing output artifacts, and is always a
+	# regular directory inside the chroot (i.e. it's never mounted in, so it's
+	# always safe to use cp -al for these artifacts).
+	: "${CHROME_CACHE_DIR:="/var/cache/chromeos-chrome/${CHROME_SRC}"}"
+	addwrite "${CHROME_CACHE_DIR}"
+
+	# CHROME_DISTDIR is used for storing the source code, if any source code
+	# needs to be unpacked at build time (e.g. in the SERVER_SOURCE scenario.)
+	# It will be mounted into the chroot, so it is never safe to use cp -al
+	# for these files.
+	: "${CHROME_DISTDIR:="${PORTAGE_ACTUAL_DISTDIR:-${DISTDIR}}/${CHROME_SRC}"}"
+	addwrite "${CHROME_DISTDIR}"
 
 	# Create storage directories.
 	sandboxless_ensure_directory "${CHROME_DISTDIR}" "${CHROME_CACHE_DIR}"
 
 	# Copy in credentials to fake home directory so that build process
-	# can access svn and ssh if needed.
+	# can access vcs and ssh if needed.
 	mkdir -p ${HOME}
-	SUBVERSION_CONFIG_DIR=/home/${WHOAMI}/.subversion
-	if [[ -d ${SUBVERSION_CONFIG_DIR} ]]; then
-		cp -rfp ${SUBVERSION_CONFIG_DIR} ${HOME} || die
-	fi
 	SSH_CONFIG_DIR=/home/${WHOAMI}/.ssh
 	if [[ -d ${SSH_CONFIG_DIR} ]]; then
 		cp -rfp ${SSH_CONFIG_DIR} ${HOME} || die
@@ -802,6 +786,10 @@ setup_compile_flags() {
 	# nothing to do with USE=clang.
 	filter-flags -clang-syntax
 
+	# Remove unsupported arm64 linker flag on arm32 builds.
+	# https://crbug.com/889079
+	use arm && filter-flags "-Wl,--fix-cortex-a53-843419"
+
 	# There are some flags we want to only use in the ebuild.
 	# The rest will be exported to the simple chrome workflow.
 	EBUILD_CFLAGS=()
@@ -896,12 +884,7 @@ src_configure() {
 			export CC="${CC} -B$(get_binutils_path_gold)"
 			export CXX="${CXX} -B$(get_binutils_path_gold)"
 		fi
-	elif use lld ; then
-		export CC="${CC} -fuse-ld=lld"
-		export CXX="${CXX} -fuse-ld=lld"
-		export STRIP=eu-strip
-		append-ldflags -Wl,--no-rosegment
-	else
+	elif ! use lld ; then
 		ewarn "gold and lld disabled. Using GNU ld."
 	fi
 
@@ -1049,7 +1032,6 @@ src_compile() {
 
 	local chrome_targets=(
 		chrome_sandbox
-		libosmesa.so
 		$(usex mojo "mojo_shell" "")
 	)
 	if use app_shell; then
@@ -1095,8 +1077,6 @@ src_compile() {
 		# src_prepare, but we need to call install_chrome_test_resources first.
 		autotest-deponly_src_prepare
 
-		# Remove .svn dirs
-		esvn_clean "${AUTOTEST_WORKDIR}"
 		# Remove .git dirs
 		find "${AUTOTEST_WORKDIR}" -type d -name .git -prune -exec rm -rf {} +
 
@@ -1121,7 +1101,7 @@ install_test_resources() {
 	# Note: we need to specify -r when using --files-from and -a to get a
 	# recursive copy.
 	# TODO(ihf): Make failures here fatal.
-	rsync -r -a --delete --exclude=.svn --exclude=.git --exclude="*.pyc" \
+	rsync -r -a --delete --exclude=.git --exclude="*.pyc" \
 		--files-from="${tmp_list_file}" "${CHROME_ROOT}/src/" \
 		"${CHROME_CACHE_DIR}/src/"
 
@@ -1255,7 +1235,8 @@ install_telemetry_dep_resources() {
 			chrome/test/data/image_decoding \
 			content/test/data/gpu \
 			content/test/data/media \
-			content/test/gpu
+			content/test/gpu \
+			media/test/data
 		# For crosperf, which uses some tests only available on internal builds.
 		if use chrome_internal; then
 			install_test_resources "${test_dir}" \
@@ -1312,7 +1293,9 @@ src_install() {
 			doins -r "${QUICKOFFICE}"/_platform_specific/arm
 			;;
 		arm64)
-			doins -r "${QUICKOFFICE}"/_platform_specific/arm64
+			true
+			# Quickoffice is not yet available for arm64, https://crbug.com/881489 .
+			# doins -r "${QUICKOFFICE}"/_platform_specific/arm64
 			;;
 		x86)
 			doins -r "${QUICKOFFICE}"/_platform_specific/x86_32
