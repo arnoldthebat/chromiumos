@@ -1,8 +1,20 @@
 {
-  "_comment": "See http://www.chromium.org/chromium-os/building-chromium-os/disk-layout-format",
+  "_comment": "See http://www.chromium.org/chromium-os/developer-guide/disk-layout-format",
   "parent": "legacy_disk_layout.json",
   "layouts":{
     "common":[
+      {
+        "num": 2,
+        "size": "64 MiB"
+      },
+      {
+        "num": 4,
+        "size": "64 MiB"
+      },
+      {
+        "num": 12,
+        "size": "128 MiB"
+      },
       {
         "num": 3,
         "fs_size":"2000 MiB"
@@ -28,6 +40,18 @@
     ],
     "4gb-rootfs": [
       {
+        "num": 2,
+        "size": "64 MiB"
+      },
+      {
+        "num": 4,
+        "size": "64 MiB"
+      },
+      {
+        "num": 12,
+        "size": "128 MiB"
+      },
+      {
         "num": 5,
         "size": "2 MiB"
       },
@@ -44,6 +68,18 @@
     # Huge rootfs, suitable for VM only images, should not be used
     # for actual hardware devices.
     "16gb-rootfs": [
+      {
+        "num": 2,
+        "size": "64 MiB"
+      },
+      {
+        "num": 4,
+        "size": "64 MiB"
+      },
+      {
+        "num": 12,
+        "size": "128 MiB"
+      },
       {
         "num": 5,
         "size": "2 MiB"

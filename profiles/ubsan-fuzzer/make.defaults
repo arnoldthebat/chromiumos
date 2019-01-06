@@ -1,0 +1,9 @@
+USE="fuzzer ubsan"
+# Keep the debug symbols to get symbolized traces when fuzzing.
+FEATURES="nostrip -splitdebug"
+# Compiler flags to build all packages with ubsan.
+UBSAN_ENABLED_FLAGS="alignment,array-bounds,shift,vla-bound,fuzzer-no-link"
+UBSAN_DISABLED_FLAGS="vptr"
+CFLAGS=" -fsanitize=${UBSAN_ENABLED_FLAGS} -fno-sanitize=${UBSAN_DISABLED_FLAGS} -fno-sanitize-recover=all"
+CXXFLAGS=" -fsanitize=${UBSAN_ENABLED_FLAGS} -fno-sanitize=${UBSAN_DISABLED_FLAGS} -fno-sanitize-recover=all"
+LDFLAGS=" -Xcompiler -fsanitize=${UBSAN_ENABLED_FLAGS} -Xcompiler -fno-sanitize=${UBSAN_DISABLED_FLAGS} -Xcompiler -fno-sanitize-recover=all"
