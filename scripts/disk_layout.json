@@ -1,85 +1,50 @@
 {
   "_comment": "See http://www.chromium.org/chromium-os/developer-guide/disk-layout-format",
   "parent": "legacy_disk_layout.json",
-  "layouts":{
-    "common":[
+  "layouts": {
+    # common is the standard layout template.
+    "common": [
       {
-        "num": 2,
-        "size": "64 MiB"
+        # Slot B rootfs. Updated for more space, like Slot A below
+        "num": 5,
+        "size": "4096 MiB"
       },
       {
-        "num": 4,
-        "size": "64 MiB"
-      },
+        # Slot A rootfs. Adjust to allow for more space.
+        "num": 3,
+        "fs_size_min": "2300 MiB",
+        "size": "4096 MiB"
+      }
+    ],
+    "usb": [
       {
-        "num": 12,
-        "size": "128 MiB"
+        # TODO(adlr): see why stacking logic fails, thus requiring this section
+        # in this file
+        "num": 5,
+        "size": "2 MiB"
       },
       {
         "num": 3,
-        "fs_size":"2000 MiB"
+        "size": "2400 MiB"
       }
     ],
-    "usb":[
-      {
-        "num": 3,
-        "size": "2048 MiB"
-      }
-    ],
+    # Used for factory install images. No need to adjust fs size or partition
+    # size since these do not need more space.
     "factory_install": [
-      {
-        "num": 3,
-        "size": "2048 MiB"
-      }
-    ],
-    "recovery":[
-      {
-        "num": 3,
-        "size": "2048 MiB"
-      }
-    ],
-    "4gb-rootfs": [
-      {
-        "num": 2,
-        "size": "64 MiB"
-      },
-      {
-        "num": 4,
-        "size": "64 MiB"
-      },
-      {
-        "num": 12,
-        "size": "128 MiB"
-      },
       {
         "num": 5,
         "size": "2 MiB"
       },
       {
         "num": 3,
-        "size": "4096 MiB",
-        "fs_size": "4000 MiB"
-      },
-      {
-        "num": 1,
-        "size": "3072 MiB"
+        "size": "420 MiB",
+        "fs_size_min": "400 MiB",
+        "fs_size": "400 MiB"
       }
     ],
     # Huge rootfs, suitable for VM only images, should not be used
     # for actual hardware devices.
     "16gb-rootfs": [
-      {
-        "num": 2,
-        "size": "64 MiB"
-      },
-      {
-        "num": 4,
-        "size": "64 MiB"
-      },
-      {
-        "num": 12,
-        "size": "128 MiB"
-      },
       {
         "num": 5,
         "size": "2 MiB"
