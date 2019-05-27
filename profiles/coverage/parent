@@ -1,2 +1,2 @@
 ../base
-chromiumos:coverage/amd64
+chromiumos:features/sanitizers/coverage/amd64

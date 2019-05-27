@@ -1,0 +1,2 @@
+../base
+chromiumos:features/sanitizers/tsan/amd64
