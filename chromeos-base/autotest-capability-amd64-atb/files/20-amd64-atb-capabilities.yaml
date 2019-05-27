@@ -1,2 +1,4 @@
 # camera
+- builtin_camera
 - usb_camera
+- no mipi_camera

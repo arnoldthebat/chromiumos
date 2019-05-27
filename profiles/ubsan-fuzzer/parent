@@ -1,2 +1,2 @@
 ../base
-chromiumos:ubsan/amd64
+chromiumos:features/sanitizers/ubsan/amd64

@@ -1,0 +1,7 @@
+USE="fuzzer msan"
+# Keep the debug symbols to get symbolized traces when fuzzing.
+FEATURES="nostrip -splitdebug"
+# Compiler flags to build all packages with msan.
+CFLAGS=" -fsanitize=memory,fuzzer-no-link"
+CXXFLAGS=" -fsanitize=memory,fuzzer-no-link"
+LDFLAGS=" -Xcompiler -fsanitize=memory,fuzzer-no-link"

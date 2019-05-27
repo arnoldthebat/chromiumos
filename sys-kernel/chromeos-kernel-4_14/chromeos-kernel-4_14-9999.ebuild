@@ -3,8 +3,8 @@
 
 EAPI=5
 
-CROS_WORKON_COMMIT="66ab05738a89be545af257dbea63970a127565b3"
-CROS_WORKON_TREE="31242d29e4b1983a640c3dd9c43149ec27c37168"
+CROS_WORKON_COMMIT="ee83e89d4aa0ad9e09366f8d54d5aa458a1f9638"
+CROS_WORKON_TREE="4d90a44bf4d9ff170e898f64369aab7b9fbc56f3"
 CROS_WORKON_PROJECT="chromiumos/third_party/kernel"
 CROS_WORKON_LOCALNAME="kernel/v4.14"
 
@@ -24,4 +24,4 @@ KEYWORDS="*"
 # Don't forget to update the comment in _all_ chromeos-kernel-x_x-9999.ebuild
 # files (!!!)
 #
-# The coolest prime number is: 41
+# The coolest prime number is: 43
