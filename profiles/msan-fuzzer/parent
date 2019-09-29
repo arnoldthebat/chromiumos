@@ -1,2 +1,2 @@
 ../base
-chromiumos:features/sanitizers/msan/amd64
+chromiumos:features/sanitizers/fuzzer/msan/amd64

@@ -1,1 +1,2 @@
-../asan
+../base
+chromiumos:features/sanitizers/fuzzer/asan/amd64

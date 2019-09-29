@@ -12,7 +12,8 @@ CROS_WORKON_REPO="https://github.com/arnoldthebat"
 CROS_WORKON_PROJECT="rtl8188eu"
 CROS_WORKON_EGIT_BRANCH="master"
 CROS_WORKON_BLACKLIST="1"
-CROS_WORKON_COMMIT="91603297127623cc5e0902565609b64875843982"
+# CROS_WORKON_COMMIT="91603297127623cc5e0902565609b64875843982"
+# CROS_WORKON_COMMIT= "6e468154ea6a7fcb9a388ff54c3241fca0dd8e9d"
 
 # This must be inherited *after* EGIT/CROS_WORKON variables defined.
 inherit git-2 cros-workon #cros-kernel2 cros-workon
