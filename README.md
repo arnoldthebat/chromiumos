@@ -18,6 +18,12 @@ Clone this repo to your overlay name in your repo/src/overlays
 * The Google assistant does not work.
 * "This is the last automatic software and security upgrade statement" can safely be ignored since this wont prevent subsequent updates.
 
+### Change Log 30/09/19
+
+* HID Sensors framework support enabled
+* Thunderbolt support
+* Apple SMC (Motion sensor, light sensor, keyboard backlight)
+
 ### Change Log 29/09/19
 
 * Realtek rtl8192e wireless support
