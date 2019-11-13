@@ -1,7 +1,7 @@
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI=6
 
 #CROS_WORKON_COMMIT="887323c2abe73acc792695419572e442ed8eb168"
 #CROS_WORKON_TREE="ec7fa2fc678d88568f576084c7445487ffde84af"
@@ -14,6 +14,11 @@ inherit cros-workon cros-kernel2
 HOMEPAGE="https://www.chromium.org/chromium-os/chromiumos-design-docs/chromium-os-kernel"
 DESCRIPTION="Chrome OS Linux Kernel 4.14"
 KEYWORDS="*"
+
+src_prepare() {
+	eapply "${FILESDIR}/v4.14.patch"
+    eapply_user
+}
 
 # Change the following (commented out) number to the next prime number
 # when you change "cros-kernel2.eclass" to work around http://crbug.com/220902
