@@ -3,8 +3,6 @@
 
 EAPI=6
 
-#CROS_WORKON_COMMIT="887323c2abe73acc792695419572e442ed8eb168"
-#CROS_WORKON_TREE="ec7fa2fc678d88568f576084c7445487ffde84af"
 CROS_WORKON_PROJECT="chromiumos/third_party/kernel"
 CROS_WORKON_LOCALNAME="kernel/v4.14"
 
@@ -16,7 +14,7 @@ DESCRIPTION="Chrome OS Linux Kernel 4.14"
 KEYWORDS="*"
 
 src_prepare() {
-	eapply "${FILESDIR}/v4.14.patch"
+	# eapply "${FILESDIR}/v4.14.patch"
     eapply_user
 }
 
