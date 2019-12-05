@@ -17,7 +17,6 @@ KEYWORDS="*"
 
 src_prepare() {
 	eapply "${FILESDIR}/v4.19.patch"
-	eapply "${FILESDIR}/touchscreen.patch"
     eapply_user
 }
 
