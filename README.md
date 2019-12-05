@@ -17,7 +17,7 @@ sed -i 's/ALL_BOARDS=(/ALL_BOARDS=(\n amd64-atb\n/' ${HOME}/chromiumos/src/third
 
 export BOARD=amd64-atb
 setup_board --board=${BOARD}
-cros_workon --board=${BOARD} start sys-kernel/chromeos-kernel-4_14
+cros_workon --board=${BOARD} start sys-kernel/chromeos-kernel-4_19
 ```
 
 Running from outside cros_sdk:
@@ -26,12 +26,13 @@ Running from outside cros_sdk:
 export BOARD=amd64-atb
 cd ${HOME}/chromiumos
 cros_sdk -- "./setup_board" "--board=${BOARD}"
-cros_sdk -- "cros_workon" "--board=${BOARD}" "start" "sys-kernel/chromeos-kernel-4_14"
+cros_sdk -- "cros_workon" "--board=${BOARD}" "start" "sys-kernel/chromeos-kernel-4_19"
 ```
 
 ### Build AMD64 Packages
 
 ```bash
+emerge-amd64-atb chromeos-factory-board
 ./build_packages --board=${BOARD}
 ```
 
@@ -51,7 +52,7 @@ sed -i 's/ALL_BOARDS=(/ALL_BOARDS=(\n amd64-vanilla\n/' ${HOME}/chromiumos/src/t
 
 export BOARD=amd64-vanilla
 setup_board --board=${BOARD}
-cros_workon --board=${BOARD} start sys-kernel/chromeos-kernel-4_14
+cros_workon --board=${BOARD} start sys-kernel/chromeos-kernel-4_19
 ```
 
 ### Build Vanilla Packages
@@ -77,7 +78,7 @@ Add to File: ../../chroot/etc/sandbox.conf
 
 ```bash
 # Needed for kernel patches
-SANDBOX_WRITE="/mnt/host/source/src/third_party/kernel/v4.14/"
+SANDBOX_WRITE="/mnt/host/source/src/third_party/kernel/v4.19/"
 ```
 
 ## Alpha Builds
@@ -109,6 +110,6 @@ SANDBOX_WRITE="/mnt/host/source/src/third_party/kernel/v4.14/"
 
 ### Change Log - 08/09/19
 
-* Added in all 4.14 kernel supported Marvell Wireless cards
+* Added in all 4.19 kernel supported Marvell Wireless cards
 * Switched back to Intel IWL7K Wireless drivers
 * Added in brcm80211 drivers and removed old BroadCom STA driver

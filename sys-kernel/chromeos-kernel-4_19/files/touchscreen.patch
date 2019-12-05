@@ -1,0 +1,40 @@
+diff -rupN v4.19/drivers/platform/x86/touchscreen_dmi.c v4.19-atb/drivers/platform/x86/touchscreen_dmi.c
+--- v4.19/drivers/platform/x86/touchscreen_dmi.c	2019-12-03 09:57:25.072699070 +0100
++++ v4.19-atb/drivers/platform/x86/touchscreen_dmi.c	2019-12-05 00:05:43.506720583 +0100
+@@ -411,6 +411,19 @@ static const struct ts_dmi_data trekstor
+ 	.properties	= trekstor_surftab_wintron70_props,
+ };
+ 
++static const struct property_entry techbite_arc_11_6_props[] = {
++	PROPERTY_ENTRY_U32("touchscreen-size-x", 1910),
++	PROPERTY_ENTRY_U32("touchscreen-size-y", 1260),
++	PROPERTY_ENTRY_STRING("firmware-name", "gsl1680-techbite_arc_11_6.fw"),
++	PROPERTY_ENTRY_U32("silead,max-fingers", 10),
++	{ }
++};
++
++static const struct silead_ts_dmi_data techbite_arc_11_6_data = {
++	.acpi_name	= "MSSL1680:00",
++	.properties	= techbite_arc_11_6_props,
++};
++
+ /* NOTE: Please keep this table sorted alphabetically */
+ static const struct dmi_system_id touchscreen_dmi_table[] = {
+ 	{
+@@ -685,6 +698,16 @@ static const struct dmi_system_id touchs
+ 			DMI_MATCH(DMI_PRODUCT_NAME, "Y8W81"),
+ 		},
+ 	},
++	{
++		/* Techbite Arc 11.6 */
++		.driver_data = (void *)&techbite_arc_11_6_data,
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "mPTech"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "techBite Arc 11.6"),
++			DMI_MATCH(DMI_BOARD_NAME, "G8316_272B"),
++			DMI_MATCH(DMI_BIOS_VERSION, "V0.33.0_360Angle_P8S1M2E0F2L2B0T4P2G85A2U0D114"),
++		},
++	},
+ 	{ },
+ };
+ 

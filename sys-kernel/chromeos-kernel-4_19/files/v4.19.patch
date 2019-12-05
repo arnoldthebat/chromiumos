@@ -1,0 +1,287 @@
+diff --git a/drivers/net/ethernet/brocade/bna/bna_enet.c b/drivers/net/ethernet/brocade/bna/bna_enet.c
+index bba81735ce87..6b5b13de5171 100644
+--- a/drivers/net/ethernet/brocade/bna/bna_enet.c
++++ b/drivers/net/ethernet/brocade/bna/bna_enet.c
+@@ -1797,7 +1797,7 @@ bna_ucam_mod_init(struct bna_ucam_mod *ucam_mod, struct bna *bna,
+ 
+ 	/* A separate queue to allow synchronous setting of a list of MACs */
+ 	INIT_LIST_HEAD(&ucam_mod->del_q);
+-	for (i = i; i < (bna->ioceth.attr.num_ucmac * 2); i++)
++	for ((void)i; i < (bna->ioceth.attr.num_ucmac * 2); i++)
+ 		list_add_tail(&ucam_mod->ucmac[i].qe, &ucam_mod->del_q);
+ 
+ 	ucam_mod->bna = bna;
+@@ -1832,7 +1832,7 @@ bna_mcam_mod_init(struct bna_mcam_mod *mcam_mod, struct bna *bna,
+ 
+ 	/* A separate queue to allow synchronous setting of a list of MACs */
+ 	INIT_LIST_HEAD(&mcam_mod->del_q);
+-	for (i = i; i < (bna->ioceth.attr.num_mcmac * 2); i++)
++	for ((void)i; i < (bna->ioceth.attr.num_mcmac * 2); i++)
+ 		list_add_tail(&mcam_mod->mcmac[i].qe, &mcam_mod->del_q);
+ 
+ 	mcam_mod->bna = bna;
+diff --git a/drivers/net/usb/lan78xx.c b/drivers/net/usb/lan78xx.c
+index b62c41114e34..4efb9436b26a 100644
+--- a/drivers/net/usb/lan78xx.c
++++ b/drivers/net/usb/lan78xx.c
+@@ -924,7 +924,7 @@ static int lan78xx_read_otp(struct lan78xx_net *dev, u32 offset,
+ 
+ 	if (ret == 0) {
+ 		if (sig == OTP_INDICATOR_1)
+-			offset = offset;
++			(void)offset;
+ 		else if (sig == OTP_INDICATOR_2)
+ 			offset += 0x100;
+ 		else
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_n.c b/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_n.c
+index ef685465f80a..1975ad073f58 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_n.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_n.c
+@@ -25541,7 +25541,7 @@ void wlc_phy_cal_perical_nphy_run(struct brcms_phy *pi, u8 caltype)
+ 			wlc_phy_cal_perical_mphase_restart(pi);
+ 	}
+ 
+-	if ((pi->mphase_cal_phase_id == MPHASE_CAL_STATE_RXCAL))
++	if (pi->mphase_cal_phase_id == MPHASE_CAL_STATE_RXCAL)
+ 		wlapi_bmac_write_shm(pi->sh->physhim, M_CTS_DURATION, 10000);
+ 
+ 	wlapi_suspend_mac_and_wait(pi->sh->physhim);
+diff --git a/drivers/net/wireless/intel/ipw2x00/ipw2200.c b/drivers/net/wireless/intel/ipw2x00/ipw2200.c
+index 8da87496cb58..41cae21d3576 100644
+--- a/drivers/net/wireless/intel/ipw2x00/ipw2200.c
++++ b/drivers/net/wireless/intel/ipw2x00/ipw2200.c
+@@ -5659,7 +5659,7 @@ static void ipw_merge_adhoc_network(struct work_struct *work)
+ 		}
+ 
+ 		mutex_lock(&priv->mutex);
+-		if ((priv->ieee->iw_mode == IW_MODE_ADHOC)) {
++		if (priv->ieee->iw_mode == IW_MODE_ADHOC) {
+ 			IPW_DEBUG_MERGE("remove network %*pE\n",
+ 					priv->essid_len, priv->essid);
+ 			ipw_remove_current_network(priv);
+diff --git a/drivers/staging/rtl8188eu/core/rtw_ieee80211.c b/drivers/staging/rtl8188eu/core/rtw_ieee80211.c
+index bb867a987c2b..a3b0b60ccd92 100644
+--- a/drivers/staging/rtl8188eu/core/rtw_ieee80211.c
++++ b/drivers/staging/rtl8188eu/core/rtw_ieee80211.c
+@@ -306,7 +306,7 @@ unsigned char *rtw_get_wpa_ie(unsigned char *pie, uint *wpa_ie_len, int limit)
+ 
+ 		if (pbuf) {
+ 			/* check if oui matches... */
+-			if (!memcmp((pbuf + 2), wpa_oui_type, sizeof(wpa_oui_type)) == false)
++			if ((!memcmp((pbuf + 2), wpa_oui_type, sizeof(wpa_oui_type))) == false)
+ 				goto check_next_ie;
+ 
+ 			/* check version... */
+diff --git a/drivers/staging/rtl8188eu/core/rtw_mlme.c b/drivers/staging/rtl8188eu/core/rtw_mlme.c
+index f6d71587b803..c578f583d5d0 100644
+--- a/drivers/staging/rtl8188eu/core/rtw_mlme.c
++++ b/drivers/staging/rtl8188eu/core/rtw_mlme.c
+@@ -1447,7 +1447,7 @@ static int rtw_check_join_candidate(struct mlme_priv *pmlmepriv
+ 	/* check ssid, if needed */
+ 	if (pmlmepriv->assoc_ssid.SsidLength) {
+ 		if (competitor->network.Ssid.SsidLength != pmlmepriv->assoc_ssid.SsidLength ||
+-		    !memcmp(competitor->network.Ssid.Ssid, pmlmepriv->assoc_ssid.Ssid, pmlmepriv->assoc_ssid.SsidLength) == false)
++		    (!memcmp(competitor->network.Ssid.Ssid, pmlmepriv->assoc_ssid.Ssid, pmlmepriv->assoc_ssid.SsidLength)) == false)
+ 			goto exit;
+ 	}
+ 
+diff --git a/drivers/staging/rtl8188eu/core/rtw_pwrctrl.c b/drivers/staging/rtl8188eu/core/rtw_pwrctrl.c
+index f86c9cebf09a..180215a33aef 100644
+--- a/drivers/staging/rtl8188eu/core/rtw_pwrctrl.c
++++ b/drivers/staging/rtl8188eu/core/rtw_pwrctrl.c
+@@ -302,7 +302,7 @@ void rtw_set_rpwm(struct adapter *padapter, u8 pslv)
+ 			pslv = PS_STATE_S3;
+ 	}
+ 
+-	if ((pwrpriv->rpwm == pslv)) {
++	if (pwrpriv->rpwm == pslv) {
+ 		RT_TRACE(_module_rtl871x_pwrctrl_c_, _drv_err_,
+ 			 ("%s: Already set rpwm[0x%02X], new=0x%02X!\n", __func__, pwrpriv->rpwm, pslv));
+ 		return;
+diff --git a/drivers/staging/rtl8188eu/core/rtw_recv.c b/drivers/staging/rtl8188eu/core/rtw_recv.c
+index afb9dadc1cfe..7af8c39b505f 100644
+--- a/drivers/staging/rtl8188eu/core/rtw_recv.c
++++ b/drivers/staging/rtl8188eu/core/rtw_recv.c
+@@ -1289,8 +1289,8 @@ static int wlanhdr_to_ethhdr(struct recv_frame *precvframe)
+ 	psnap_type = ptr+pattrib->hdrlen + pattrib->iv_len+SNAP_SIZE;
+ 	/* convert hdr + possible LLC headers into Ethernet header */
+ 	if ((!memcmp(psnap, rtw_rfc1042_header, SNAP_SIZE) &&
+-	     (!memcmp(psnap_type, SNAP_ETH_TYPE_IPX, 2) == false) &&
+-	     (!memcmp(psnap_type, SNAP_ETH_TYPE_APPLETALK_AARP, 2) == false)) ||
++	     ((!memcmp(psnap_type, SNAP_ETH_TYPE_IPX, 2)) == false) &&
++	     ((!memcmp(psnap_type, SNAP_ETH_TYPE_APPLETALK_AARP, 2)) == false)) ||
+ 	     !memcmp(psnap, rtw_bridge_tunnel_header, SNAP_SIZE)) {
+ 		/* remove RFC1042 or Bridge-Tunnel encapsulation and replace EtherType */
+ 		bsnaphdr = true;
+diff --git a/drivers/staging/rtl8188eu/core/rtw_wlan_util.c b/drivers/staging/rtl8188eu/core/rtw_wlan_util.c
+index 2db8a5d11c0d..1812127e8b94 100644
+--- a/drivers/staging/rtl8188eu/core/rtw_wlan_util.c
++++ b/drivers/staging/rtl8188eu/core/rtw_wlan_util.c
+@@ -879,7 +879,7 @@ int rtw_check_bcn_info(struct adapter  *Adapter, u8 *pframe, u32 packet_len)
+ 		return _FAIL;
+ 	}
+ 
+-	if (!memcmp(cur_network->network.MacAddress, pbssid, 6) == false) {
++	if ((!memcmp(cur_network->network.MacAddress, pbssid, 6)) == false) {
+ 		DBG_88E("Oops: rtw_check_network_encrypt linked but recv other bssid bcn\n%pM %pM\n",
+ 			(pbssid), (cur_network->network.MacAddress));
+ 		return true;
+diff --git a/drivers/staging/rtl8188eu/hal/odm.c b/drivers/staging/rtl8188eu/hal/odm.c
+index ec8aae76bf40..ea7eadb5d90a 100644
+--- a/drivers/staging/rtl8188eu/hal/odm.c
++++ b/drivers/staging/rtl8188eu/hal/odm.c
+@@ -1093,7 +1093,7 @@ void odm_EdcaTurboCheckCE(struct odm_dm_struct *pDM_Odm)
+ 	struct mlme_ext_priv	*pmlmeext = &(Adapter->mlmeextpriv);
+ 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
+ 
+-	if ((pregpriv->wifi_spec == 1))/*  (pmlmeinfo->HT_enable == 0)) */
++	if (pregpriv->wifi_spec == 1)/*  (pmlmeinfo->HT_enable == 0)) */
+ 		goto dm_CheckEdcaTurbo_EXIT;
+ 
+ 	if (pmlmeinfo->assoc_AP_vendor >=  HT_IOT_PEER_MAX)
+diff --git a/drivers/staging/rtl8188eu/hal/rf_cfg.c b/drivers/staging/rtl8188eu/hal/rf_cfg.c
+index 9712d7b74345..31952c920e97 100644
+--- a/drivers/staging/rtl8188eu/hal/rf_cfg.c
++++ b/drivers/staging/rtl8188eu/hal/rf_cfg.c
+@@ -185,7 +185,7 @@ static void rtl8188e_config_rf_reg(struct adapter *adapt,
+ 	u32 content = 0x1000; /*RF Content: radio_a_txt*/
+ 	u32 maskforphyset = content & 0xE000;
+ 
+-	rtl_rfreg_delay(adapt, RF90_PATH_A, addr | maskforphyset,
++	rtl_rfreg_delay(adapt, RF_PATH_A, addr | maskforphyset,
+ 			RFREG_OFFSET_MASK,
+ 			data);
+ }
+diff --git a/drivers/staging/rtl8723bs/core/rtw_security.c b/drivers/staging/rtl8723bs/core/rtw_security.c
+index 06a7e4059fbb..836d01ad026d 100644
+--- a/drivers/staging/rtl8723bs/core/rtw_security.c
++++ b/drivers/staging/rtl8723bs/core/rtw_security.c
+@@ -1552,7 +1552,7 @@ u32 rtw_aes_encrypt(struct adapter *padapter, u8 *pxmitframe)
+ 	pframe = ((struct xmit_frame *)pxmitframe)->buf_addr + hw_hdr_offset;
+ 
+ 	/* 4 start to encrypt each fragment */
+-	if ((pattrib->encrypt == _AES_)) {
++	if (pattrib->encrypt == _AES_) {
+ 		RT_TRACE(_module_rtl871x_security_c_, _drv_err_, ("rtw_aes_encrypt: stainfo!= NULL!!!\n"));
+ 
+ 		if (IS_MCAST(pattrib->ra))
+@@ -1875,7 +1875,7 @@ u32 rtw_aes_decrypt(struct adapter *padapter, u8 *precvframe)
+ 
+ 	pframe = (unsigned char *)((union recv_frame *)precvframe)->u.hdr.rx_data;
+ 	/* 4 start to encrypt each fragment */
+-	if ((prxattrib->encrypt == _AES_)) {
++	if (prxattrib->encrypt == _AES_) {
+ 
+ 		stainfo = rtw_get_stainfo(&padapter->stapriv, &prxattrib->ta[0]);
+ 		if (stainfo != NULL) {
+diff --git a/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.c b/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.c
+index 8d53cb73cea5..d95e226d4b23 100644
+--- a/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.c
++++ b/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.c
+@@ -105,7 +105,7 @@ void odm_EdcaTurboCheckCE(void *pDM_VOID)
+ 		return;
+ 	}
+ 
+-	if ((pregpriv->wifi_spec == 1)) {
++	if (pregpriv->wifi_spec == 1) {
+ 		precvpriv->bIsAnyNonBEPkts = false;
+ 		return;
+ 	}
+diff --git a/drivers/staging/rtl8723bs/hal/rtl8723b_hal_init.c b/drivers/staging/rtl8723bs/hal/rtl8723b_hal_init.c
+index 1565f2d67ea4..ac14aea35d4c 100644
+--- a/drivers/staging/rtl8723bs/hal/rtl8723b_hal_init.c
++++ b/drivers/staging/rtl8723bs/hal/rtl8723b_hal_init.c
+@@ -3357,7 +3357,7 @@ static void hw_var_set_opmode(struct adapter *padapter, u8 variable, u8 *val)
+ 			/*  disable atim wnd */
+ 			rtw_write8(padapter, REG_BCN_CTRL, DIS_TSF_UDT|EN_BCN_FUNCTION|DIS_ATIM);
+ 			/* rtw_write8(padapter, REG_BCN_CTRL, 0x18); */
+-		} else if ((mode == _HW_STATE_ADHOC_) /*|| (mode == _HW_STATE_AP_)*/) {
++		} else if (mode == _HW_STATE_ADHOC_ /*|| (mode == _HW_STATE_AP_)*/) {
+ 			ResumeTxBeacon(padapter);
+ 			rtw_write8(padapter, REG_BCN_CTRL, DIS_TSF_UDT|EN_BCN_FUNCTION|DIS_BCNQ_SUB);
+ 		} else if (mode == _HW_STATE_AP_) {
+diff --git a/drivers/staging/rtlwifi/btcoexist/halbtcoutsrc.c b/drivers/staging/rtlwifi/btcoexist/halbtcoutsrc.c
+index 52620b72cfa9..5e2c7dd87cb6 100644
+--- a/drivers/staging/rtlwifi/btcoexist/halbtcoutsrc.c
++++ b/drivers/staging/rtlwifi/btcoexist/halbtcoutsrc.c
+@@ -1273,13 +1273,13 @@ bool exhalbtc_initlize_variables_wifi_only(struct rtl_priv *rtlpriv)
+ 
+ 	switch (rtlpriv->rtlhal.interface) {
+ 	case INTF_PCI:
+-		wifionly_cfg->chip_interface = BTC_INTF_PCI;
++		wifionly_cfg->chip_interface = WIFIONLY_INTF_PCI;
+ 		break;
+ 	case INTF_USB:
+-		wifionly_cfg->chip_interface = BTC_INTF_USB;
++		wifionly_cfg->chip_interface = WIFIONLY_INTF_USB;
+ 		break;
+ 	default:
+-		wifionly_cfg->chip_interface = BTC_INTF_UNKNOWN;
++		wifionly_cfg->chip_interface = WIFIONLY_INTF_UNKNOWN;
+ 		break;
+ 	}
+ 
+diff --git a/drivers/staging/rtlwifi/phydm/phydm_adc_sampling.c b/drivers/staging/rtlwifi/phydm/phydm_adc_sampling.c
+index 158dd5d05de4..1f64015e111d 100644
+--- a/drivers/staging/rtlwifi/phydm/phydm_adc_sampling.c
++++ b/drivers/staging/rtlwifi/phydm/phydm_adc_sampling.c
+@@ -566,7 +566,7 @@ void phydm_lamode_trigger_setting(void *dm_void, char input[][16], u32 *_used,
+ 				output + used, out_len - used,
+ 				"{En} {0:BB,1:BB_MAC,2:RF0,3:RF1,4:MAC}\n {BB:dbg_port[bit],BB_MAC:0-ok/1-fail/2-cca,MAC:ref} {DMA type} {TrigTime}\n {polling_time/ref_mask} {dbg_port} {0:P_Edge, 1:N_Edge} {SpRate:0-80M,1-40M,2-20M} {Capture num}\n");
+ 			/**/
+-		} else if ((is_enable_la_mode == 1)) {
++		} else if (is_enable_la_mode == 1) {
+ 			PHYDM_SSCANF(input[2], DCMD_DECIMAL, &var1[1]);
+ 
+ 			trig_mode = (u8)var1[1];
+diff --git a/drivers/staging/rtlwifi/regd.c b/drivers/staging/rtlwifi/regd.c
+index e0a3ff85edb6..42b179daa14f 100644
+--- a/drivers/staging/rtlwifi/regd.c
++++ b/drivers/staging/rtlwifi/regd.c
+@@ -421,7 +421,7 @@ int rtl_regd_init(struct ieee80211_hw *hw,
+ 	struct wiphy *wiphy = hw->wiphy;
+ 	struct country_code_to_enum_rd *country = NULL;
+ 
+-	if (!wiphy || !&rtlpriv->regd)
++	if (wiphy == NULL || &rtlpriv->regd == NULL)
+ 		return -EINVAL;
+ 
+ 	/* init country_code from efuse channel plan */
+diff --git a/drivers/video/backlight/lm3639_bl.c b/drivers/video/backlight/lm3639_bl.c
+index cd50df5807ea..4c2a78bc3d12 100644
+--- a/drivers/video/backlight/lm3639_bl.c
++++ b/drivers/video/backlight/lm3639_bl.c
+@@ -400,9 +400,9 @@ static int lm3639_remove(struct i2c_client *client)
+ 
+ 	regmap_write(pchip->regmap, REG_ENABLE, 0x00);
+ 
+-	if (&pchip->cdev_torch)
++	// if (&pchip->cdev_torch)
+ 		led_classdev_unregister(&pchip->cdev_torch);
+-	if (&pchip->cdev_flash)
++	// if (&pchip->cdev_flash)
+ 		led_classdev_unregister(&pchip->cdev_flash);
+ 	if (pchip->bled)
+ 		device_remove_file(&(pchip->bled->dev), &dev_attr_bled_mode);
+diff --git a/sound/soc/fsl/fsl_asrc_dma.c b/sound/soc/fsl/fsl_asrc_dma.c
+index 74847c6bf9fc..3555addeb3a7 100644
+--- a/sound/soc/fsl/fsl_asrc_dma.c
++++ b/sound/soc/fsl/fsl_asrc_dma.c
+@@ -174,9 +174,16 @@ static int fsl_asrc_dma_hw_params(struct snd_pcm_substream *substream,
+ 		return -EINVAL;
+ 	}
+ 
++	/* TD Hack for error: logical not is only applied to the left hand side of 
++	* this comparison
++	* Appears to be more of a clang bug than anything else.
++	*/
++
++	// #pragma GCC diagnostic ignored "-Wlogical-not-parentheses"
++
+ 	/* Override dma_data of the Front-End and config its dmaengine */
+ 	dma_params_fe = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+-	dma_params_fe->addr = asrc_priv->paddr + REG_ASRDx(!dir, index);
++	dma_params_fe->addr = (asrc_priv->paddr) + REG_ASRDx((!dir), index);
+ 	dma_params_fe->maxburst = dma_params_be->maxburst;
+ 
+ 	pair->dma_chan[!dir] = fsl_asrc_get_dma_channel(pair, !dir);
