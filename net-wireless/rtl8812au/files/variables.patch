@@ -1,0 +1,35 @@
+diff --git a/Makefile b/Makefile
+index 85585e7..5ee7d2c 100644
+--- a/Makefile
++++ b/Makefile
+@@ -3,11 +3,12 @@ EXTRA_CFLAGS += -O1
+ #EXTRA_CFLAGS += -O3
+ EXTRA_CFLAGS += -Wall
+ #EXTRA_CFLAGS += -Wextra
+-EXTRA_CFLAGS += -Werror
++EXTRA_CFLAGS += -Wno-error
+ #EXTRA_CFLAGS += -pedantic
+ #EXTRA_CFLAGS += -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes
+ EXTRA_CFLAGS += -Wframe-larger-than=1536
+ 
++EXTRA_CFLAGS += -Wno-unused-but-set-variable
+ #EXTRA_CFLAGS += -Wno-unused-variable
+ #EXTRA_CFLAGS += -Wno-unused-value
+ #EXTRA_CFLAGS += -Wno-unused-label
+diff --git a/include/wifi.h b/include/wifi.h
+index b2afa0b..439ba32 100644
+--- a/include/wifi.h
++++ b/include/wifi.h
+@@ -976,8 +976,12 @@ typedef enum _HT_CAP_AMPDU_FACTOR {
+  * A-PMDU buffer sizes
+  * According to IEEE802.11n spec size varies from 8K to 64K (in powers of 2)
+  */
++#ifndef IEEE80211_MIN_AMPDU_BUF
+ #define IEEE80211_MIN_AMPDU_BUF 0x8
++#endif
++#ifndef IEEE80211_MAX_AMPDU_BUF 
+ #define IEEE80211_MAX_AMPDU_BUF 0x40
++#endif
+ 
+ 
+ /* Spatial Multiplexing Power Save Modes */

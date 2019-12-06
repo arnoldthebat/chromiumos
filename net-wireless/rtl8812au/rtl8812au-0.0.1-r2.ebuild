@@ -36,6 +36,11 @@ pkg_setup() {
 	BUILD_TARGETS="rtl8812au.ko"
 }
 
+src_prepare() {
+	epatch \
+		"${FILESDIR}/variables.patch"
+	epatch_user
+}
 
 src_install() {
 	linux-mod_src_install
