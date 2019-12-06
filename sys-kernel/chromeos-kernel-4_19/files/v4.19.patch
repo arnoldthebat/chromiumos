@@ -1,17 +1,15 @@
 diff --git a/Makefile b/Makefile
-index 4d82da767ad8..8c51c9fdcbcd 100644
+index 4d82da767ad8..469bfb097f25 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -700,18 +700,17 @@ stackp-flags-$(CONFIG_STACKPROTECTOR_STRONG)      := -fstack-protector-strong
- 
+@@ -701,17 +701,16 @@ stackp-flags-$(CONFIG_STACKPROTECTOR_STRONG)      := -fstack-protector-strong
  KBUILD_CFLAGS += $(stackp-flags-y)
  
--ifdef CONFIG_CC_IS_CLANG
+ ifdef CONFIG_CC_IS_CLANG
 -KBUILD_CPPFLAGS += -Qunused-arguments
 -KBUILD_CFLAGS += -Wno-format-invalid-specifier
 -KBUILD_CFLAGS += -Wno-gnu
 -KBUILD_CFLAGS += -Wno-duplicate-decl-specifier
-+ifeq ($(cc-name),clang)
 +KBUILD_CPPFLAGS += $(call cc-option,-Qunused-arguments,)
 +KBUILD_CFLAGS += $(call cc-disable-warning, format-invalid-specifier)
 +KBUILD_CFLAGS += $(call cc-disable-warning, gnu)
