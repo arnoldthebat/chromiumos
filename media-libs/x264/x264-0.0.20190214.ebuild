@@ -3,7 +3,7 @@
 
 EAPI=7
 
-inherit flag-o-matic multilib-minimal toolchain-funcs
+inherit flag-o-matic multilib-minimal toolchain-funcs eutils
 
 DESCRIPTION="A free library for encoding X264/AVC streams"
 HOMEPAGE="https://www.videolan.org/developers/x264.html"
@@ -31,7 +31,8 @@ RDEPEND="opencl? ( >=virtual/opencl-0-r3[${MULTILIB_USEDEP}] )"
 DOCS=( AUTHORS doc/{ratecontrol,regression_test,standards,threads,vui}.txt )
 
 multilib_src_configure() {
-	tc-export CC
+    AS="/build/${BOARD}/usr/bin/nasm"
+    tc-export CC AS
 	local asm_conf=""
 
 	if [[ ${ABI} == x86* ]] && { use pic || use !cpu_flags_x86_sse ; } || [[ ${ABI} == "x32" ]] || [[ ${CHOST} == armv5* ]] || [[ ${ABI} == ppc* ]] && { use !altivec ; }; then
