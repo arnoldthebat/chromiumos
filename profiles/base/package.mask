@@ -1,0 +1,1 @@
+>=www-plugins/chrome-binary-plugins-80.0.3983.2_alpha
