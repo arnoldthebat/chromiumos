@@ -25,6 +25,7 @@ RDEPEND="
 	net-wireless/rtl8723au
 	net-wireless/rtl8723bu
 	net-wireless/rtl8812au
+	net-wireless/rtl8821ce
 	www-plugins/chrome-binary-plugins
 "
 DEPEND="${RDEPEND}"

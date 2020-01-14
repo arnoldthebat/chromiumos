@@ -88,6 +88,10 @@
         "num": 3,
         "fs_size": "16000 MiB",
         "size": "16384 MiB"
+      },
+      {
+        "num": 1,
+        "size": "4096 MiB"
       }
     ]
   }

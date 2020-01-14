@@ -86,7 +86,10 @@ SANDBOX_WRITE="/mnt/host/source/src/third_party/kernel/v4.14/"
 
 * Play Store does not work.
 * The Google assistant does not work.
-* "This is the last automatic software and security upgrade statement" can safely be ignored since this wont prevent subsequent updates.
+
+### Change Log 24/11/19
+
+* Realtek rtl8821ce wireless support
 
 ### Change Log 30/09/19
 
