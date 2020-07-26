@@ -18,6 +18,10 @@
       {
         "num": 3,
         "fs_size":"2000 MiB"
+      },
+      {
+        "num": 1,
+        "size": "4096 MiB"
       }
     ],
     "usb":[
@@ -62,7 +66,7 @@
       },
       {
         "num": 1,
-        "size": "3072 MiB"
+        "size": "4096 MiB"
       }
     ],
     # Huge rootfs, suitable for VM only images, should not be used
