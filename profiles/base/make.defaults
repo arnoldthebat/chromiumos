@@ -37,8 +37,8 @@ USE="${USE} arc-camera3"
 # Enable vivid
 USE="${USE} vivid"
 
-# Enable usbip
-USE="${USE} usbip"
+# Enable hostap hwsim tests and use latest supplicant.
+USE="${USE} wifi_hostap_test wpa_supplicant_next"
 
 # Enable Downloadable Content (DLC)
 USE="${USE} dlc"
