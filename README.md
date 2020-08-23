@@ -1,4 +1,4 @@
-<!-- cSpell:ignore brcm, realtek, setup, chromiumos, eclass, cros, workon, chromeos, auserver, devserver, noenable, rootfs, updatable, backlight -->
+<!-- cSpell:ignore brcm, realtek, setup, chromiumos, eclass, cros, workon, chromeos, auserver, devserver, noenable, rootfs, updatable, backlight, arnoldthebat -->
 
 # ChromiumOS
 
@@ -8,7 +8,12 @@ This repo is for the special builds only
 
 All downloads are located at <http://chromium.arnoldthebat.co.uk/>.
 
-Clone this repo to your overlay name in your repo/src/overlays
+Clone this repo to your overlay name in your repo/src/overlays for example:
+
+```bash
+cd ~/chromiumos/src/overlays/
+git clone git@github.com:arnoldthebat/chromiumos.git overlay-amd64-atb
+```
 
 ## AMD64 Setup
 
@@ -25,7 +30,7 @@ Running from outside cros_sdk:
 ```bash
 export BOARD=amd64-atb
 cd ${HOME}/chromiumos
-cros_sdk -- "./setup_board" "--board=${BOARD}"
+cros_sdk -- "setup_board" "--board=${BOARD}"
 cros_sdk -- "cros_workon" "--board=${BOARD}" "start" "sys-kernel/chromeos-kernel-4_14"
 ```
 
@@ -35,38 +40,21 @@ cros_sdk -- "cros_workon" "--board=${BOARD}" "start" "sys-kernel/chromeos-kernel
 ./build_packages --board=${BOARD}
 ```
 
+Running from outside cros_sdk:
+
+```bash
+export BOARD=amd64-atb
+cd ${HOME}/chromiumos
+cros_sdk -- "./build_packages" "--board=${BOARD}"
+```
+
 ### Build AMD64 Image
 
 ```bash
 export BOARD=amd64-atb
-export CHROMEOS_VERSION_AUSERVER=http://chromebld.arnoldthebat.co.uk:9080/update
-export CHROMEOS_VERSION_DEVSERVER=http://chromebld.arnoldthebat.co.uk:9080
-./build_image --board=${BOARD} --noenable_rootfs_verification dev --disk_layout 2gb-rootfs-updatable
-```
-
-## Vanilla Setup
-
-```bash
-sed -i 's/ALL_BOARDS=(/ALL_BOARDS=(\n amd64-vanilla\n/' ${HOME}/chromiumos/src/third_party/chromiumos-overlay/eclass/cros-board.eclass
-
-export BOARD=amd64-vanilla
-setup_board --board=${BOARD}
-cros_workon --board=${BOARD} start sys-kernel/chromeos-kernel-4_14
-```
-
-### Build Vanilla Packages
-
-```bash
-./build_packages --board=${BOARD}
-```
-
-### Build Vanilla Image
-
-```bash
-export BOARD=amd64-vanilla
-export CHROMEOS_VERSION_AUSERVER=http://chromebld.arnoldthebat.co.uk:9081/update
-export CHROMEOS_VERSION_DEVSERVER=http://chromebld.arnoldthebat.co.uk:9081
-./build_image --board=${BOARD} --noenable_rootfs_verification dev --disk_layout 2gb-rootfs-updatable
+export CHROMEOS_VERSION_AUSERVER=http://chromebld.arnoldthebat.co.uk:8080/update
+export CHROMEOS_VERSION_DEVSERVER=http://chromebld.arnoldthebat.co.uk:8080
+./build_image --board=${BOARD} --noenable_rootfs_verification dev
 ```
 
 ## Other hacks
