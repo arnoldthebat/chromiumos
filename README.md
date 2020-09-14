@@ -17,8 +17,12 @@ git clone git@github.com:arnoldthebat/chromiumos.git overlay-amd64-atb
 
 ## AMD64 Setup
 
+Setup the board
+
 ```bash
 sed -i 's/ALL_BOARDS=(/ALL_BOARDS=(\n amd64-atb\n/' ${HOME}/chromiumos/src/third_party/chromiumos-overlay/eclass/cros-board.eclass
+
+Running from inside cros_sdk:
 
 export BOARD=amd64-atb
 setup_board --board=${BOARD}
@@ -34,9 +38,33 @@ cros_sdk -- "setup_board" "--board=${BOARD}"
 cros_sdk -- "cros_workon" "--board=${BOARD}" "start" "sys-kernel/chromeos-kernel-4_14"
 ```
 
-### Build AMD64 Packages
+### Update Kernel Settings
+
+Running from inside cros_sdk:
 
 ```bash
+export BOARD=amd64-atb
+cd ~/trunk/src/third_party/kernel/v4.14/
+make menuconfig KCONFIG_CONFIG=/mnt/host/source/src/overlays/overlay-${BOARD}/kconfigs/.config
+```
+
+Running from outside cros_sdk:
+
+```bash
+export BOARD=amd64-atb
+cd ${HOME}/chromiumos/src/third_party/kernel/v4.14/
+make menuconfig KCONFIG_CONFIG=${HOME}/chromiumos/src/overlays/overlay-${BOARD}/kconfigs/.config
+```
+
+Amend/Add/Remove as needed for your requirements.
+
+### Build AMD64 Packages
+
+Running from inside cros_sdk:
+
+```bash
+export BOARD=amd64-atb
+cd ~/trunk/src/scripts/
 ./build_packages --board=${BOARD}
 ```
 
@@ -48,24 +76,41 @@ cd ${HOME}/chromiumos
 cros_sdk -- "./build_packages" "--board=${BOARD}"
 ```
 
+This will take a long time!
+
 ### Build AMD64 Image
+
+Running from inside cros_sdk:
 
 ```bash
 export BOARD=amd64-atb
-export CHROMEOS_VERSION_AUSERVER=http://chromebld.arnoldthebat.co.uk:8080/update
-export CHROMEOS_VERSION_DEVSERVER=http://chromebld.arnoldthebat.co.uk:8080
+export CHROMEOS_VERSION_AUSERVER=http://chromeota.arnoldthebat.co.uk:8080/update
+export CHROMEOS_VERSION_DEVSERVER=http://chromeota.arnoldthebat.co.uk:8080
 ./build_image --board=${BOARD} --noenable_rootfs_verification dev
+```
+
+## Copying to USB
+
+Running from outside cros_sdk:
+
+```bash
+sudo dd if=/path/to/chromiumos_image.bin of=/dev/sdb bs=4096 status=progress && sync
 ```
 
 ## Other hacks
 
 ### Kernel patches
 
-Add to File: ../../chroot/etc/sandbox.conf
+Running from inside cros_sdk:
 
 ```bash
-# Needed for kernel patches
-SANDBOX_WRITE="/mnt/host/source/src/third_party/kernel/v4.14/"
+sudo tee -a ~/trunk/chroot/etc/sandbox.conf <<<'SANDBOX_WRITE="/mnt/host/source/src/third_party/kernel/v4.14/"'
+```
+
+Running from outside cros_sdk:
+
+```bash
+sudo tee -a ${HOME}/chromiumos/chroot/etc/sandbox.conf <<<'SANDBOX_WRITE="/mnt/host/source/src/third_party/kernel/v4.14/"'
 ```
 
 ## Alpha Builds

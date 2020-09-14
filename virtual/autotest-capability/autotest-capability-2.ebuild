@@ -9,4 +9,4 @@ LICENSE="BSD-Google"
 SLOT="0"
 KEYWORDS="*"
 
-RDEPEND="chromeos-base/autotest-capability-amd64-atb"
+RDEPEND="chromeos-base/autotest-capability-amd64-generic"

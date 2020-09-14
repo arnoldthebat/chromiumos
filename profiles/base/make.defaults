@@ -37,8 +37,8 @@ USE="${USE} arc-camera3"
 # Enable vivid
 USE="${USE} vivid"
 
-# Enable hostap hwsim tests and use latest supplicant.
-USE="${USE} wifi_hostap_test wpa_supplicant_next"
+# Enable hostap hwsim tests.
+USE="${USE} wifi_hostap_test"
 
 # Enable Downloadable Content (DLC)
 USE="${USE} dlc"
@@ -53,6 +53,9 @@ USE="${USE} include_vmlinuz"
 # for further details about chromeos-config, which is the required entry point for
 # unified builds.
 USE="${USE} -unibuild"
+
+# Enable wayland and egl for LaCrOS.
+USE="${USE} wayland egl"
 
 # Enable a few more video cards as this is a generic board.
 VIDEO_CARDS="intel i915 i965 llvmpipe nouveau radeon radeonsi r100 r200 r300 r600 vmware"
