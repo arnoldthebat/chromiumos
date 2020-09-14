@@ -3,7 +3,7 @@
 
 EAPI=5
 
-DESCRIPTION="Install autotest capabilities for amd64-atb"
+DESCRIPTION="Install autotest capabilities for amd64-generic"
 
 LICENSE="BSD-Google"
 SLOT="0"
