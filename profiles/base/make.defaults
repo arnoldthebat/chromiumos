@@ -63,3 +63,6 @@ VIDEO_CARDS="intel i915 i965 llvmpipe nouveau radeon radeonsi r100 r200 r300 r60
 # VIDEO_CARDS="intel llvmpipe nouveau radeon"
 # INPUT_DEVICES="keyboard mouse evdev synaptics"
 #INPUT_DEVICES="libinput"
+
+# Add TPM2 Simulator to allow machines to access chrome://flags on machines that ChromeOS cannot detect a hardware TPM
+USE="${USE} -tpm tpm2 tpm2_simulator tpm2_simulator_manufacturer"
