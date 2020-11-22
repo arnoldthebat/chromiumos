@@ -31,6 +31,9 @@ USE="${USE} buffet -wifi_bootstrapping"
 USE="${USE} chrome_media x264 widevine "
 USE="${USE} llvm"
 
+# Enable NNAPI for testing.
+USE="${USE} nnapi"
+
 # Enable camera HALv3
 USE="${USE} arc-camera3"
 
@@ -60,6 +63,7 @@ USE="${USE} wayland egl"
 # Enable a few more video cards as this is a generic board.
 VIDEO_CARDS="intel i915 i965 llvmpipe nouveau radeon radeonsi r100 r200 r300 r600 vmware"
 
-# VIDEO_CARDS="intel llvmpipe nouveau radeon"
-# INPUT_DEVICES="keyboard mouse evdev synaptics"
-#INPUT_DEVICES="libinput"
+# Virtual machines don't have physical TPMs.
+# Enable TPM2.0 simulator on it.
+USE="${USE} -tpm tpm2 tpm2_simulator tpm2_simulator_manufacturer"
+
