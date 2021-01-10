@@ -1,0 +1,48 @@
+# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This board only supports a single config, defined below, as it is a
+# # migrated pre-unibuild device.
+# device-config: &device_config
+#   camera:
+#     legacy-usb: True
+#   name: amd64-atb
+#   identity: &base_ident
+#     platform-name: "amd64-atb"
+#     smbios-name-match: "amd64-atb"
+
+
+# # Required dunder for chromeos-config to support a single device.
+# chromeos:
+#   devices:
+#     - $device-name: "amd64-atb"
+#       products:
+#         - $brand-code: "AMDATB"
+#           $key-id: "{09EF0583-EC2B-430D-B816-79DBDB6449BC}"
+      
+#       skus:
+#         - $sku-id: 1
+#           config: *device_config
+
+common_config: &common_config
+  name: "{{$device-name}}"
+  brand-code: "{{$brand-code}}"
+  identity:
+    platform-name: "atb"
+    smbios-name-match: "atb"
+    sku-id: "{{$sku-id}}"
+  firmware-signing:
+    key-id: "{{$key-id}}"
+    signature-id: "{{name}}"
+  camera:
+    legacy-usb: True
+chromeos:
+  devices:
+    - $device-name: "atb"
+      products:
+        - $brand-code: "ATB"
+          $key-id: "09EF0583-EC2B-430D-B816-79DBDB6449BC"
+      skus:
+        - $sku-id: 1
+          config: *common_config

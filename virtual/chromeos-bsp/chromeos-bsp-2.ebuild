@@ -22,10 +22,11 @@ RDEPEND="
 	media-libs/x264
 	!net-wireless/broadcom-sta
 	!net-wireless/rtl8188eu
-	net-wireless/rtl8723au
-	net-wireless/rtl8723bu
-	net-wireless/rtl8812au
-	net-wireless/rtl8821ce
+	!net-wireless/rtl8723au
+	!net-wireless/rtl8723bu
+	!net-wireless/rtl8812au
+	!net-wireless/rtl8821ce
 	www-plugins/chrome-binary-plugins
+	chromeos-base/chromeos-bsp-amd64-atb
 "
 DEPEND="${RDEPEND}"

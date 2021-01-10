@@ -21,7 +21,7 @@ USE=""
 
 USE="${USE} containers kvm_host crosvm-gpu virtio_gpu"
 
-USE="${USE} legacy_keyboard legacy_power_button sse kernel-4_14"
+USE="${USE} legacy_usb legacy_keyboard legacy_power_button sse kernel-4_14"
 
 USE="${USE} direncryption"
 
@@ -30,6 +30,9 @@ USE="${USE} buffet -wifi_bootstrapping"
 
 USE="${USE} chrome_media x264 widevine "
 USE="${USE} llvm"
+
+# Enable NNAPI for testing.
+USE="${USE} nnapi"
 
 # Enable camera HALv3
 USE="${USE} arc-camera3"
@@ -46,13 +49,8 @@ USE="${USE} dlc"
 # Include the kernel in the base image.
 USE="${USE} include_vmlinuz"
 
-# Disable unibuild on this legacy board. This is only for existing (as of Jan 2019)
-# boards as all new boards must be unibuild enabled moving forward. Do not copy this
-# to new boards as it will be rejected. See
-# https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/README.md
-# for further details about chromeos-config, which is the required entry point for
-# unified builds.
-USE="${USE} -unibuild"
+# Enable chromeos-config.
+USE="${USE} unibuild"
 
 # Enable wayland and egl for LaCrOS.
 USE="${USE} wayland egl"
@@ -60,6 +58,7 @@ USE="${USE} wayland egl"
 # Enable a few more video cards as this is a generic board.
 VIDEO_CARDS="intel i915 i965 llvmpipe nouveau radeon radeonsi r100 r200 r300 r600 vmware"
 
-# VIDEO_CARDS="intel llvmpipe nouveau radeon"
-# INPUT_DEVICES="keyboard mouse evdev synaptics"
-#INPUT_DEVICES="libinput"
+# Virtual machines don't have physical TPMs.
+# Enable TPM2.0 simulator on it.
+USE="${USE} -tpm tpm2 tpm2_simulator tpm2_simulator_manufacturer"
+

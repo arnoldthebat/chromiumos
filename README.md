@@ -1,4 +1,4 @@
-<!-- cSpell:ignore brcm, realtek, setup, chromiumos, eclass, cros, workon, chromeos, auserver, devserver, noenable, rootfs, updatable, backlight, arnoldthebat -->
+<!-- cSpell:ignore brcm, realtek, setup, chromiumos, eclass, cros, workon, chromeos, auserver, devserver, noenable, rootfs, updatable, backlight, arnoldthebat, menuconfig, kconfig, kconfigs -->
 
 # ChromiumOS
 
@@ -6,7 +6,7 @@ Chromium OS is an open-source project that aims to build an operating system tha
 
 This repo is for the special builds only
 
-All downloads are located at <http://chromium.arnoldthebat.co.uk/>.
+All downloads are located at <https://chromium.arnoldthebat.co.uk/>.
 
 Clone this repo to your overlay name in your repo/src/overlays for example:
 
@@ -21,9 +21,13 @@ Setup the board
 
 ```bash
 sed -i 's/ALL_BOARDS=(/ALL_BOARDS=(\n amd64-atb\n/' ${HOME}/chromiumos/src/third_party/chromiumos-overlay/eclass/cros-board.eclass
+```
+
+### Special Build Setup
 
 Running from inside cros_sdk:
 
+```bash
 export BOARD=amd64-atb
 setup_board --board=${BOARD}
 cros_workon --board=${BOARD} start sys-kernel/chromeos-kernel-4_14
@@ -38,7 +42,26 @@ cros_sdk -- "setup_board" "--board=${BOARD}"
 cros_sdk -- "cros_workon" "--board=${BOARD}" "start" "sys-kernel/chromeos-kernel-4_14"
 ```
 
-### Update Kernel Settings
+### Alpha Build Setup
+
+Running from inside cros_sdk:
+
+```bash
+export BOARD=amd64-atb
+setup_board --board=${BOARD}
+# cros_workon --board=${BOARD} start sys-kernel/chromeos-kernel-5_4
+```
+
+Running from outside cros_sdk:
+
+```bash
+export BOARD=amd64-atb
+cd ${HOME}/chromiumos
+cros_sdk -- "setup_board" "--board=${BOARD}"
+# cros_sdk -- "cros_workon" "--board=${BOARD}" "start" "sys-kernel/chromeos-kernel-5_4"
+```
+
+### Special Build Kernel
 
 Running from inside cros_sdk:
 
@@ -53,6 +76,24 @@ Running from outside cros_sdk:
 ```bash
 export BOARD=amd64-atb
 cd ${HOME}/chromiumos/src/third_party/kernel/v4.14/
+make menuconfig KCONFIG_CONFIG=${HOME}/chromiumos/src/overlays/overlay-${BOARD}/kconfigs/.config
+```
+
+### Alpha Build Kernel
+
+Running from inside cros_sdk:
+
+```bash
+export BOARD=amd64-atb
+cd ~/trunk/src/third_party/kernel/v5.4/
+make menuconfig KCONFIG_CONFIG=/mnt/host/source/src/overlays/overlay-${BOARD}/kconfigs/.config
+```
+
+Running from outside cros_sdk:
+
+```bash
+export BOARD=amd64-atb
+cd ${HOME}/chromiumos/src/third_party/kernel/v5.4/
 make menuconfig KCONFIG_CONFIG=${HOME}/chromiumos/src/overlays/overlay-${BOARD}/kconfigs/.config
 ```
 
@@ -78,6 +119,14 @@ cros_sdk -- "./build_packages" "--board=${BOARD}"
 
 This will take a long time!
 
+Unibuild reqs:
+
+```bash
+cros_workon --board ${BOARD} start chromeos-base/chromeos-config-bsp
+cros_workon_make --board ${BOARD} chromeos-base/chromeos-config-bsp --install
+emerge-$BOARD chromeos-config
+```
+
 ### Build AMD64 Image
 
 Running from inside cros_sdk:
@@ -99,7 +148,21 @@ sudo dd if=/path/to/chromiumos_image.bin of=/dev/sdb bs=4096 status=progress && 
 
 ## Other hacks
 
-### Kernel patches
+### Alpha Kernel patches
+
+Running from inside cros_sdk:
+
+```bash
+sudo tee -a ~/trunk/chroot/etc/sandbox.conf <<<'SANDBOX_WRITE="/mnt/host/source/src/third_party/kernel/v5.4/"'
+```
+
+Running from outside cros_sdk:
+
+```bash
+sudo tee -a ${HOME}/chromiumos/chroot/etc/sandbox.conf <<<'SANDBOX_WRITE="/mnt/host/source/src/third_party/kernel/v5.4/"'
+```
+
+### Special Kernel patches
 
 Running from inside cros_sdk:
 
@@ -113,38 +176,7 @@ Running from outside cros_sdk:
 sudo tee -a ${HOME}/chromiumos/chroot/etc/sandbox.conf <<<'SANDBOX_WRITE="/mnt/host/source/src/third_party/kernel/v4.14/"'
 ```
 
-## Alpha Builds
+## Change Logs
 
-### Known Issues
-
-* Play Store does not work.
-* The Google assistant does not work.
-
-### Change Log 24/11/19
-
-* Realtek rtl8821ce wireless support
-
-### Change Log 30/09/19
-
-* HID Sensors framework support enabled
-* Thunderbolt support
-* Apple SMC (Motion sensor, light sensor, keyboard backlight)
-
-### Change Log 29/09/19
-
-* Realtek rtl8192e wireless support
-* Realtek rtl8712  wireless support
-* Realtek rtl8723bs wireless support
-* Additional SOC sound card support
-
-### Change Log - 17/09/19
-
-* Realtek rtl8188EU Wireless support
-* Added in MediaTek MT7601U support
-* Added in various Ethernet drivers support
-
-### Change Log - 08/09/19
-
-* Added in all 4.14 kernel supported Marvell Wireless cards
-* Switched back to Intel IWL7K Wireless drivers
-* Added in brcm80211 drivers and removed old BroadCom STA driver
+* [Alpha Builds](./CHANGELOG-ALPHA.md)
+* [Special Builds](./CHANGELOG-SPECIAL.md)
