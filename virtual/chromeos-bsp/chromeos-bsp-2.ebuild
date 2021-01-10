@@ -27,6 +27,6 @@ RDEPEND="
 	!net-wireless/rtl8812au
 	!net-wireless/rtl8821ce
 	www-plugins/chrome-binary-plugins
-	chromeos-base/termina-dlc
+	chromeos-base/chromeos-bsp-amd64-atb
 "
 DEPEND="${RDEPEND}"

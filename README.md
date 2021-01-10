@@ -6,7 +6,7 @@ Chromium OS is an open-source project that aims to build an operating system tha
 
 This repo is for the special builds only
 
-All downloads are located at <http://chromium.arnoldthebat.co.uk/>.
+All downloads are located at <https://chromium.arnoldthebat.co.uk/>.
 
 Clone this repo to your overlay name in your repo/src/overlays for example:
 
@@ -118,6 +118,14 @@ cros_sdk -- "./build_packages" "--board=${BOARD}"
 ```
 
 This will take a long time!
+
+Unibuild reqs:
+
+```bash
+cros_workon --board ${BOARD} start chromeos-base/chromeos-config-bsp
+cros_workon_make --board ${BOARD} chromeos-base/chromeos-config-bsp --install
+emerge-$BOARD chromeos-config
+```
 
 ### Build AMD64 Image
 

@@ -1,0 +1,34 @@
+diff --git a/lib/dlc_lib.py b/lib/dlc_lib.py
+index 679ae4479..2ac9859b1 100644
+--- a/lib/dlc_lib.py
++++ b/lib/dlc_lib.py
+@@ -319,7 +319,7 @@ class DlcGenerator(object):
+     Args:
+       dlc_dir: (str) The path to the mounted point during image creation.
+     """
+-    app_id = None
++    app_id = "09EF0583-EC2B-430D-B816-79DBDB6449BC"
+     platform_lsb_rel_path = os.path.join(self.sysroot, LSB_RELEASE)
+     if os.path.isfile(platform_lsb_rel_path):
+       # Reading the platform APPID and creating the DLC APPID.
+diff --git a/scripts/cros_set_lsb_release.py b/scripts/cros_set_lsb_release.py
+index 6d6490225..264bbf5c3 100644
+--- a/scripts/cros_set_lsb_release.py
++++ b/scripts/cros_set_lsb_release.py
+@@ -188,13 +188,12 @@ def main(argv):
+     })
+   else:
+     # Developer manual builds.
+-    build_type = 'Developer Build - %s' % getpass.getuser()
++    build_type = 'WUV OS Build'
+     fields.update({
+         LSB_KEY_TRACK: opts.track,
+         LSB_KEY_BUILD_TYPE: build_type,
+-        LSB_KEY_DESCRIPTION: '%s (%s) %s %s' % (opts.version_string,
+-                                                build_type,
+-                                                opts.track,
++        LSB_KEY_DESCRIPTION: 'R%s:%s %s' % (opts.chrome_milestone,
++                                                opts.version_string,
+                                                 board),
+     })
+ 

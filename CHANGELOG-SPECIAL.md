@@ -11,9 +11,10 @@ Please report bugs: <https://github.com/arnoldthebat/chromiumos/issues>
 
 ## Change Log
 
-### R87 - 21/11/20
+### R87 - 10/01/21
 
 * Replaced TPM with TPM simulator for complete TPM coverage of all devices.
+* Migrated to Unibuild ebuilds.
 
 ### R78 – 12/11/19
 
