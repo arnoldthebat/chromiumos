@@ -14,7 +14,7 @@ inherit cros-workon cros-unibuild
 DESCRIPTION="ChromeOS model configuration"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/chromeos-config/README.md"
 
-DEPEND="chromeos-base/chromeos-config-bsp-baseboard"
+RDEPEND=""
 
 LICENSE="BSD-Google"
 SLOT="0"

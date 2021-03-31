@@ -11,7 +11,7 @@ HOMEPAGE="https://www.broadcom.com/support/802.11"
 CROS_WORKON_REPO="https://github.com/arnoldthebat"
 CROS_WORKON_PROJECT="broadcom-sta_amd64"
 CROS_WORKON_EGIT_BRANCH="master"
-CROS_WORKON_BLACKLIST="1"
+CROS_WORKON_MANUAL_UPREV="1"
 CROS_WORKON_COMMIT="7ee8dfd9150f761416ffe7998ce45e437c6bf797"
 
 # This must be inherited *after* EGIT/CROS_WORKON variables defined
