@@ -62,3 +62,5 @@ VIDEO_CARDS="intel i915 i965 llvmpipe nouveau radeon radeonsi r100 r200 r300 r60
 # Enable TPM2.0 simulator on it.
 USE="${USE} -tpm tpm2 tpm2_simulator tpm2_simulator_manufacturer"
 
+# Enable vTPM proxy on it for driver-level TPM simulator.
+USE="${USE} vtpm_proxy"

@@ -11,7 +11,7 @@ HOMEPAGE="https://github.com/arnoldthebat/rtl8812AU_8821AU_linux"
 CROS_WORKON_REPO="https://github.com/arnoldthebat"
 CROS_WORKON_PROJECT="rtl8812AU_8821AU_linux"
 CROS_WORKON_EGIT_BRANCH="master"
-CROS_WORKON_BLACKLIST="1"
+CROS_WORKON_MANUAL_UPREV="1"
 CROS_WORKON_COMMIT="bed205c14a363fedd8b3a497ef0141588b610d50"
 
 # This must be inherited *after* EGIT/CROS_WORKON variables defined.

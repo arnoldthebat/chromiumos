@@ -11,7 +11,7 @@ HOMEPAGE="https://github.com/arnoldthebat/rtl8723bu"
 CROS_WORKON_REPO="https://github.com/arnoldthebat"
 CROS_WORKON_PROJECT="rtl8723bu"
 CROS_WORKON_EGIT_BRANCH="master"
-CROS_WORKON_BLACKLIST="1"
+CROS_WORKON_MANUAL_UPREV="1"
 CROS_WORKON_COMMIT="6267f956cefc151cfeecd2032e7250a21f6a013e"
 
 # This must be inherited *after* EGIT/CROS_WORKON variables defined.
