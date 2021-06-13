@@ -40,6 +40,9 @@ export BOARD=amd64-atb
 cd ${HOME}/chromiumos
 cros_sdk -- "setup_board" "--board=${BOARD}"
 cros_sdk -- "cros_workon" "--board=${BOARD}" "start" "sys-kernel/chromeos-kernel-4_14"
+sudo touch ~/chromiumos/chroot/etc/sandbox.d/50-chrome
+sudo echo "SANDBOX_WRITE=\"${HOME}/depot_tools\"" | sudo tee  ${HOME}/chromiumos/chroot/etc/sandbox.d/50-chrome
+sudo echo "SANDBOX_WRITE=\"/mnt/host/source/src/third_party/kernel/v4.14\"" | sudo tee -a ${HOME}/chromiumos/chroot/etc/sandbox.d/50-chrome
 ```
 
 ### Alpha Build Setup
@@ -105,27 +108,16 @@ Running from inside cros_sdk:
 
 ```bash
 export BOARD=amd64-atb
+# Unibuild reqs
+cros_workon --board ${BOARD} start chromeos-base/chromeos-config-bsp
+cros_workon_make --board ${BOARD} chromeos-base/chromeos-config-bsp --install
+emerge-$BOARD chromeos-config
+# Build Packages
 cd ~/trunk/src/scripts/
 ./build_packages --board=${BOARD}
 ```
 
-Running from outside cros_sdk:
-
-```bash
-export BOARD=amd64-atb
-cd ${HOME}/chromiumos
-cros_sdk -- "./build_packages" "--board=${BOARD}"
-```
-
 This will take a long time!
-
-Unibuild reqs:
-
-```bash
-cros_workon --board ${BOARD} start chromeos-base/chromeos-config-bsp
-cros_workon_make --board ${BOARD} chromeos-base/chromeos-config-bsp --install
-emerge-$BOARD chromeos-config
-```
 
 ### Build AMD64 Image
 
