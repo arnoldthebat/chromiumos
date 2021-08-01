@@ -1,7 +1,7 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The Chromium OS Authors. All rights reserved.
 # Distributed under the terms of the GNU General Public License v2
 
-USE="kernel-5_4"
+USE="kernel-5_10"
 
 # Enable fscrypt v2 usage on 5.4+
 USE="${USE} direncription_allow_v2"
