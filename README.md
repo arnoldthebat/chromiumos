@@ -40,9 +40,9 @@ export BOARD=amd64-atb
 cd ${HOME}/chromiumos
 cros_sdk -- "setup_board" "--board=${BOARD}"
 cros_sdk -- "cros_workon" "--board=${BOARD}" "start" "sys-kernel/chromeos-kernel-4_14"
-sudo touch ~/chromiumos/chroot/etc/sandbox.d/50-chrome
-sudo echo "SANDBOX_WRITE=\"${HOME}/depot_tools\"" | sudo tee  ${HOME}/chromiumos/chroot/etc/sandbox.d/50-chrome
-sudo echo "SANDBOX_WRITE=\"/mnt/host/source/src/third_party/kernel/v4.14\"" | sudo tee -a ${HOME}/chromiumos/chroot/etc/sandbox.d/50-chrome
+sudo touch chroot/etc/sandbox.d/50-chrome
+sudo echo "SANDBOX_WRITE=\"${HOME}/depot_tools\"" | sudo tee chroot/etc/sandbox.d/50-chrome
+sudo echo "SANDBOX_WRITE=\"/mnt/host/source/src/third_party/kernel/v4.14\"" | sudo tee -a chroot/etc/sandbox.d/50-chrome
 ```
 
 ### Alpha Build Setup
