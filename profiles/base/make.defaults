@@ -21,9 +21,11 @@ USE=""
 
 USE="${USE} containers kvm_host crosvm-gpu virtio_gpu"
 
-USE="${USE} legacy_usb legacy_keyboard legacy_power_button sse kernel-4_14"
+USE="${USE} legacy_keyboard legacy_power_button sse kernel-5_4"
 
 USE="${USE} direncryption"
+
+USE="${USE} direncription_allow_v2"
 
 # Enable all optional features on generic overlays.
 USE="${USE} buffet -wifi_bootstrapping"
